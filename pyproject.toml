@@ -21,14 +21,14 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 authors = [
-    { name = "Arne Hoffhues"},
+    { name = "Arne Hoffhues", email = "unknown.email@unknownhost.com"},
     { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
 ]
 
 
 [project.urls]
-Repository = "https://github.com/JonathonLuiten/TrackEval"
-Issues = "https://github.com/JonathonLuiten/TrackEval/issues"
+Repository = "https://github.com/kovalp/TrackEval"
+Issues = "https://github.com/kovalp/TrackEval/issues"
 
 [dependency-groups]
 dev = [
