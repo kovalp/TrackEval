@@ -9,7 +9,7 @@ This codebase provides code for a number of different tracking evaluation metric
 We recommend using the `uv` package manager for installing the dependencies.
 The installation procedure would go similar to the plan below
 
- - Install Python 3.9 (any minor version should do).
+ - Install Python 3.8 or 3.9 (any minor version should do).
  - Install the `uv` package manager.
  - Run `uv sync` to install the dependencies and the package (in editable mode). 
 

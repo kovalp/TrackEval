@@ -3,18 +3,18 @@ name = "trackeval"
 version = "0.1.4"
 description = "Different tracking evaluation metrics including HOTA metrics."
 readme = "README.md"
-requires-python = ">=3.9,<3.10"
+requires-python = ">=3.8,<3.10"
 dependencies = [
     "matplotlib>=3.6.3",
     "numpy==1.19.5",
     "opencv-python>=4.5.4.60",
-    "pillow>=11.3.0",
-    "pycocotools>=2.0.10",
+    "pillow>=10.4.0",
+    "pycocotools>=2.0.7",
     "scikit-image>=0.19.3",
     "scipy>=1.10.1",
     "tabulate>=0.9.0",
 ]
-license = "MIT"
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -37,7 +37,7 @@ Issues = "https://github.com/kovalp/TrackEval/issues"
 [dependency-groups]
 dev = [
     "bump-my-version>=1.2.1",
-    "pytest>=8.4.1",
+    "pytest>=8.3.5",
     "ruff>=0.12.9",
 ]
 
