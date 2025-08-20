@@ -1,6 +1,6 @@
 [project]
 name = "trackeval"
-version = "0.1.2"
+version = "0.1.3"
 description = "Different tracking evaluation metrics including HOTA metrics."
 readme = "README.md"
 requires-python = ">=3.9,<3.10"
