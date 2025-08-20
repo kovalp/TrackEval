@@ -1,6 +1,6 @@
 [project]
 name = "trackeval"
-version = "0.1.2"
+version = "0.1.4"
 description = "Different tracking evaluation metrics including HOTA metrics."
 readme = "README.md"
 requires-python = ">=3.9,<3.10"
@@ -21,14 +21,18 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 authors = [
-    { name = "Arne Hoffhues"},
+    { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
+]
+
+maintainers = [
+    { name = "Arne Hoffhues", email = "unknown.email@unknownhost.com"},
     { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
 ]
 
 
 [project.urls]
-Repository = "https://github.com/JonathonLuiten/TrackEval"
-Issues = "https://github.com/JonathonLuiten/TrackEval/issues"
+Repository = "https://github.com/kovalp/TrackEval"
+Issues = "https://github.com/kovalp/TrackEval/issues"
 
 [dependency-groups]
 dev = [
