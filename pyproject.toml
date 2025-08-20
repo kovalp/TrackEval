@@ -21,6 +21,10 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 authors = [
+    { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
+]
+
+maintainers = [
     { name = "Arne Hoffhues", email = "unknown.email@unknownhost.com"},
     { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
 ]
