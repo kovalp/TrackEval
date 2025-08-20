@@ -21,8 +21,8 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 authors = [
-    { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" },
-    { name = "Arne Hoffhues"}
+    { name = "Arne Hoffhues"},
+    { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
 ]
 
 
