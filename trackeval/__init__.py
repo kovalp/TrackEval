@@ -1,3 +1,7 @@
+"""."""
+
+__version__ = '0.1.1'
+
 from .eval import Evaluator
 from . import datasets
 from . import metrics
