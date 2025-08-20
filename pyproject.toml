@@ -1,6 +1,6 @@
 [project]
 name = "trackeval"
-version = "0.1.1"
+version = "0.1.2"
 description = "Different tracking evaluation metrics including HOTA metrics."
 readme = "README.md"
 requires-python = ">=3.9,<3.10"
@@ -21,8 +21,8 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 authors = [
-    { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" },
-    { name = "Arne Hoffhues"}
+    { name = "Arne Hoffhues"},
+    { name = "Jonathon Luiten", email = "jonoluiten@gmail.com" }
 ]
 
 
