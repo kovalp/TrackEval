@@ -1,12 +1,15 @@
-import os
-import csv
 import configparser
+import csv
+import os
+
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from ._base_dataset import _BaseDataset
-from .. import utils
-from .. import _timing
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
+from ._base_dataset import _BaseDataset
+
 
 class PersonPath22(_BaseDataset):
     """Dataset class for MOT Challenge 2D bounding box tracking"""

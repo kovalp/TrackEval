@@ -3,13 +3,17 @@ Should test ALL metrics across all datasets and splits currently supported.
 Only tests one tracker per dataset/split to give a quick test result.
 """
 
-import sys
 import os
-import numpy as np
+import sys
+
 from multiprocessing import freeze_support
+
+import numpy as np
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import trackeval  # noqa: E402
+
 
 # Fixes multiprocessing on windows, does nothing otherwise
 if __name__ == '__main__':

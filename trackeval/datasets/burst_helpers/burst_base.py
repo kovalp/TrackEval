@@ -1,13 +1,16 @@
-import os
-import numpy as np
-import json
 import itertools
+import json
+import os
+
 from collections import defaultdict
+
+import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from trackeval.utils import TrackEvalException
+
+from trackeval import _timing, utils
 from trackeval.datasets._base_dataset import _BaseDataset
-from trackeval import utils
-from trackeval import _timing
+from trackeval.utils import TrackEvalException
 
 
 class BURSTBase(_BaseDataset):

@@ -1,7 +1,8 @@
 """."""
 
-from typing import Dict, Sequence, Union
 import argparse
+
+from typing import Dict, Sequence, Union
 
 
 def modify_with_cmd_line(config: Dict[str, Union[str, int, float, bool]],

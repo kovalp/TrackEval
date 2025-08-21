@@ -1,9 +1,6 @@
 """."""
 
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 
+from . import datasets, metrics, plotting, utils
 from .eval import Evaluator
-from . import datasets
-from . import metrics
-from . import plotting
-from . import utils

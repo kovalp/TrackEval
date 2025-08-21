@@ -25,6 +25,9 @@ ruff format
 ruff check --fix
 ```
 
+... but `ruff format` is known to break the code for Python 3.8.
+So, not recommended until the unit tests are covering 100% of the code. 
+
 ## Bump version number 
 
 ```shell
