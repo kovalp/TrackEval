@@ -34,7 +34,7 @@ bump-my-version bump patch
 ## Upgrading the dependencies
 
 ```shell
-uv lock -U
+uv sync -U
 ```
 
 
