@@ -37,4 +37,10 @@ bump-my-version bump patch
 uv sync -U
 ```
 
+## List the versions of the installed dependencies
+
+```shell
+uv tree --depth 1
+```
+
 
