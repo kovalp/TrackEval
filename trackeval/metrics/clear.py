@@ -1,9 +1,10 @@
-
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
+
+from .. import _timing, utils
 from ._base_metric import _BaseMetric
-from .. import _timing
-from .. import utils
+
 
 class CLEAR(_BaseMetric):
     """Class which implements the CLEAR metrics"""
@@ -22,7 +23,17 @@ class CLEAR(_BaseMetric):
         main_integer_fields = ['CLR_TP', 'CLR_FN', 'CLR_FP', 'IDSW', 'MT', 'PT', 'ML', 'Frag']
         extra_integer_fields = ['CLR_Frames']
         self.integer_fields = main_integer_fields + extra_integer_fields
-        main_float_fields = ['MOTA', 'MOTP', 'MODA', 'CLR_Re', 'CLR_Pr', 'MTR', 'PTR', 'MLR', 'sMOTA']
+        main_float_fields = [
+            'MOTA',
+            'MOTP',
+            'MODA',
+            'CLR_Re',
+            'CLR_Pr',
+            'MTR',
+            'PTR',
+            'MLR',
+            'sMOTA',
+        ]
         extra_float_fields = ['CLR_F1', 'FP_per_frame', 'MOTAL', 'MOTP_sum']
         self.float_fields = main_float_fields + extra_float_fields
         self.fields = self.float_fields + self.integer_fields
@@ -32,7 +43,6 @@ class CLEAR(_BaseMetric):
         # Configuration options:
         self.config = utils.init_config(config, self.get_default_config(), self.get_name())
         self.threshold = float(self.config['THRESHOLD'])
-
 
     @_timing.time
     def eval_sequence(self, data):
@@ -77,7 +87,9 @@ class CLEAR(_BaseMetric):
 
             # Calc score matrix to first minimise IDSWs from previous frame, and then maximise MOTP secondarily
             similarity = data['similarity_scores'][t]
-            score_mat = (tracker_ids_t[np.newaxis, :] == prev_timestep_tracker_id[gt_ids_t[:, np.newaxis]])
+            score_mat = (
+                tracker_ids_t[np.newaxis, :] == prev_timestep_tracker_id[gt_ids_t[:, np.newaxis]]
+            )
             score_mat = 1000 * score_mat + similarity
             score_mat[similarity < self.threshold - np.finfo('float').eps] = 0
 
@@ -93,7 +105,8 @@ class CLEAR(_BaseMetric):
             # Calc IDSW for MOTA
             prev_matched_tracker_ids = prev_tracker_id[matched_gt_ids]
             is_idsw = (np.logical_not(np.isnan(prev_matched_tracker_ids))) & (
-                np.not_equal(matched_tracker_ids, prev_matched_tracker_ids))
+                np.not_equal(matched_tracker_ids, prev_matched_tracker_ids)
+            )
             res['IDSW'] += np.sum(is_idsw)
 
             # Update counters for MT/ML/PT/Frag and record for IDSW/Frag for next timestep
@@ -152,13 +165,25 @@ class CLEAR(_BaseMetric):
         for field in self.integer_fields:
             if ignore_empty_classes:
                 res[field] = self._combine_sum(
-                    {k: v for k, v in all_res.items() if v['CLR_TP'] + v['CLR_FN'] + v['CLR_FP'] > 0}, field)
+                    {
+                        k: v
+                        for k, v in all_res.items()
+                        if v['CLR_TP'] + v['CLR_FN'] + v['CLR_FP'] > 0
+                    },
+                    field,
+                )
             else:
                 res[field] = self._combine_sum({k: v for k, v in all_res.items()}, field)
         for field in self.float_fields:
             if ignore_empty_classes:
                 res[field] = np.mean(
-                    [v[field] for v in all_res.values() if v['CLR_TP'] + v['CLR_FN'] + v['CLR_FP'] > 0], axis=0)
+                    [
+                        v[field]
+                        for v in all_res.values()
+                        if v['CLR_TP'] + v['CLR_FN'] + v['CLR_FP'] > 0
+                    ],
+                    axis=0,
+                )
             else:
                 res[field] = np.mean([v[field] for v in all_res.values()], axis=0)
         return res
@@ -174,13 +199,23 @@ class CLEAR(_BaseMetric):
         res['PTR'] = res['PT'] / np.maximum(1.0, num_gt_ids)
         res['CLR_Re'] = res['CLR_TP'] / np.maximum(1.0, res['CLR_TP'] + res['CLR_FN'])
         res['CLR_Pr'] = res['CLR_TP'] / np.maximum(1.0, res['CLR_TP'] + res['CLR_FP'])
-        res['MODA'] = (res['CLR_TP'] - res['CLR_FP']) / np.maximum(1.0, res['CLR_TP'] + res['CLR_FN'])
-        res['MOTA'] = (res['CLR_TP'] - res['CLR_FP'] - res['IDSW']) / np.maximum(1.0, res['CLR_TP'] + res['CLR_FN'])
+        res['MODA'] = (res['CLR_TP'] - res['CLR_FP']) / np.maximum(
+            1.0, res['CLR_TP'] + res['CLR_FN']
+        )
+        res['MOTA'] = (res['CLR_TP'] - res['CLR_FP'] - res['IDSW']) / np.maximum(
+            1.0, res['CLR_TP'] + res['CLR_FN']
+        )
         res['MOTP'] = res['MOTP_sum'] / np.maximum(1.0, res['CLR_TP'])
-        res['sMOTA'] = (res['MOTP_sum'] - res['CLR_FP'] - res['IDSW']) / np.maximum(1.0, res['CLR_TP'] + res['CLR_FN'])
+        res['sMOTA'] = (res['MOTP_sum'] - res['CLR_FP'] - res['IDSW']) / np.maximum(
+            1.0, res['CLR_TP'] + res['CLR_FN']
+        )
 
-        res['CLR_F1'] = res['CLR_TP'] / np.maximum(1.0, res['CLR_TP'] + 0.5*res['CLR_FN'] + 0.5*res['CLR_FP'])
+        res['CLR_F1'] = res['CLR_TP'] / np.maximum(
+            1.0, res['CLR_TP'] + 0.5 * res['CLR_FN'] + 0.5 * res['CLR_FP']
+        )
         res['FP_per_frame'] = res['CLR_FP'] / np.maximum(1.0, res['CLR_Frames'])
         safe_log_idsw = np.log10(res['IDSW']) if res['IDSW'] > 0 else res['IDSW']
-        res['MOTAL'] = (res['CLR_TP'] - res['CLR_FP'] - safe_log_idsw) / np.maximum(1.0, res['CLR_TP'] + res['CLR_FN'])
+        res['MOTAL'] = (res['CLR_TP'] - res['CLR_FP'] - safe_log_idsw) / np.maximum(
+            1.0, res['CLR_TP'] + res['CLR_FN']
+        )
         return res

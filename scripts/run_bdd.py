@@ -1,5 +1,4 @@
-
-""" run_bdd.py
+"""run_bdd.py
 
 Run example:
 run_bdd.py --USE_PARALLEL False --METRICS Hota --TRACKERS_TO_EVAL qdtrack
@@ -33,13 +32,16 @@ Command Line Arguments: Defaults, # Comments
         'METRICS': ['Hota','Clear', 'ID', 'Count']
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
+
 from multiprocessing import freeze_support
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import trackeval  # noqa: E402
+
 
 if __name__ == '__main__':
     freeze_support()
@@ -49,13 +51,17 @@ if __name__ == '__main__':
     default_eval_config['PRINT_ONLY_COMBINED'] = True
     default_dataset_config = trackeval.datasets.BDD100K.get_default_dataset_config()
     default_metrics_config = {'METRICS': ['HOTA', 'CLEAR', 'Identity']}
-    config = {**default_eval_config, **default_dataset_config, **default_metrics_config}  # Merge default configs
+    config = {
+        **default_eval_config,
+        **default_dataset_config,
+        **default_metrics_config,
+    }  # Merge default configs
     parser = argparse.ArgumentParser()
     for setting in config.keys():
         if type(config[setting]) == list or type(config[setting]) == type(None):
-            parser.add_argument("--" + setting, nargs='+')
+            parser.add_argument('--' + setting, nargs='+')
         else:
-            parser.add_argument("--" + setting)
+            parser.add_argument('--' + setting)
     args = parser.parse_args().__dict__
     for setting in args.keys():
         if args[setting] is not None:

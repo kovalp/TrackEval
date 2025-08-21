@@ -1,10 +1,11 @@
-import os
 import csv
+import os
+
 import numpy as np
-from ._base_dataset import _BaseDataset
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
-from .. import utils
-from .. import _timing
+from ._base_dataset import _BaseDataset
 
 
 class DAVIS(_BaseDataset):
@@ -15,8 +16,12 @@ class DAVIS(_BaseDataset):
         """Default class config values"""
         code_path = utils.get_code_path()
         default_config = {
-            'GT_FOLDER': os.path.join(code_path, 'data/gt/davis/davis_unsupervised_val/'),  # Location of GT data
-            'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/davis/davis_unsupervised_val/'),  # Trackers location
+            'GT_FOLDER': os.path.join(
+                code_path, 'data/gt/davis/davis_unsupervised_val/'
+            ),  # Location of GT data
+            'TRACKERS_FOLDER': os.path.join(
+                code_path, 'data/trackers/davis/davis_unsupervised_val/'
+            ),  # Trackers location
             'OUTPUT_FOLDER': None,  # Where to save eval results (if None, same as TRACKERS_FOLDER)
             'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
             'SPLIT_TO_EVAL': 'val',  # Valid: 'val', 'train'
@@ -28,7 +33,7 @@ class DAVIS(_BaseDataset):
             'SEQMAP_FILE': None,  # Specify seqmap file
             'SEQ_INFO': None,  # If not None, directly specify sequences to eval and their number of timesteps
             # '{gt_folder}/Annotations_unsupervised/480p/{seq}'
-            'MAX_DETECTIONS': 0  # Maximum number of allowed detections per sequence (0 for no threshold)
+            'MAX_DETECTIONS': 0,  # Maximum number of allowed detections per sequence (0 for no threshold)
         }
         return default_config
 
@@ -55,18 +60,22 @@ class DAVIS(_BaseDataset):
 
         # Get classes to eval
         self.valid_classes = ['general']
-        self.class_list = [cls.lower() if cls.lower() in self.valid_classes else None
-                           for cls in self.config['CLASSES_TO_EVAL']]
+        self.class_list = [
+            cls.lower() if cls.lower() in self.valid_classes else None
+            for cls in self.config['CLASSES_TO_EVAL']
+        ]
         if not all(self.class_list):
-            raise TrackEvalException('Attempted to evaluate an invalid class. Only general class is valid.')
+            raise TrackEvalException(
+                'Attempted to evaluate an invalid class. Only general class is valid.'
+            )
 
         # Get sequences to eval
-        if self.config["SEQ_INFO"]:
-            self.seq_list = list(self.config["SEQ_INFO"].keys())
-            self.seq_lengths = self.config["SEQ_INFO"]
-        elif self.config["SEQMAP_FILE"]:
+        if self.config['SEQ_INFO']:
+            self.seq_list = list(self.config['SEQ_INFO'].keys())
+            self.seq_lengths = self.config['SEQ_INFO']
+        elif self.config['SEQMAP_FILE']:
             self.seq_list = []
-            seqmap_file = self.config["SEQMAP_FILE"]
+            seqmap_file = self.config['SEQMAP_FILE']
             if not os.path.isfile(seqmap_file):
                 raise TrackEvalException('no seqmap found: ' + os.path.basename(seqmap_file))
             with open(seqmap_file) as fp:
@@ -79,7 +88,9 @@ class DAVIS(_BaseDataset):
         else:
             self.seq_list = os.listdir(self.gt_fol)
 
-        self.seq_lengths = {seq: len(os.listdir(os.path.join(self.gt_fol, seq))) for seq in self.seq_list}
+        self.seq_lengths = {
+            seq: len(os.listdir(os.path.join(self.gt_fol, seq))) for seq in self.seq_list
+        }
 
         # Get trackers to eval
         if self.config['TRACKERS_TO_EVAL'] is None:
@@ -91,20 +102,29 @@ class DAVIS(_BaseDataset):
                 curr_dir = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, seq)
                 if not os.path.isdir(curr_dir):
                     print('Tracker directory not found: ' + curr_dir)
-                    raise TrackEvalException('Tracker directory not found: ' +
-                                             os.path.join(tracker, self.tracker_sub_fol, seq))
+                    raise TrackEvalException(
+                        'Tracker directory not found: '
+                        + os.path.join(tracker, self.tracker_sub_fol, seq)
+                    )
                 tr_timesteps = len(os.listdir(curr_dir))
                 if self.seq_lengths[seq] != tr_timesteps:
-                    raise TrackEvalException('GT folder and tracker folder have a different number'
-                                             'timesteps for tracker %s and sequence %s' % (tracker, seq))
+                    raise TrackEvalException(
+                        'GT folder and tracker folder have a different number'
+                        'timesteps for tracker %s and sequence %s' % (tracker, seq)
+                    )
 
         if self.config['TRACKER_DISPLAY_NAMES'] is None:
             self.tracker_to_disp = dict(zip(self.tracker_list, self.tracker_list))
         elif (self.config['TRACKERS_TO_EVAL'] is not None) and (
-                len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)):
-            self.tracker_to_disp = dict(zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES']))
+            len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)
+        ):
+            self.tracker_to_disp = dict(
+                zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES'])
+            )
         else:
-            raise TrackEvalException('List of tracker files and tracker display names do not match.')
+            raise TrackEvalException(
+                'List of tracker files and tracker display names do not match.'
+            )
 
     def _load_raw_file(self, tracker, seq, is_gt):
         """Load a file (gt or tracker) in the DAVIS format
@@ -120,8 +140,8 @@ class DAVIS(_BaseDataset):
         """
 
         # Only loaded when run to reduce minimum requirements
-        from pycocotools import mask as mask_utils
         from PIL import Image
+        from pycocotools import mask as mask_utils
 
         # File location
         if is_gt:
@@ -142,30 +162,34 @@ class DAVIS(_BaseDataset):
             if is_gt:
                 void = frame == 255
                 frame[void] = 0
-                raw_data['masks_void'][t] = mask_utils.encode(np.asfortranarray(void.astype(np.uint8)))
+                raw_data['masks_void'][t] = mask_utils.encode(
+                    np.asfortranarray(void.astype(np.uint8))
+                )
             id_values = np.unique(frame)
             id_values = id_values[id_values != 0]
             id_list += list(id_values)
             tmp = np.ones((len(id_values), *frame.shape))
             tmp = tmp * id_values[:, None, None]
             masks = np.array(tmp == frame[None, ...]).astype(np.uint8)
-            raw_data['dets'][t] = mask_utils.encode(np.array(np.transpose(masks, (1, 2, 0)), order='F'))
+            raw_data['dets'][t] = mask_utils.encode(
+                np.array(np.transpose(masks, (1, 2, 0)), order='F')
+            )
             raw_data['ids'][t] = id_values.astype(int)
         num_objects = len(np.unique(id_list))
 
         if not is_gt and num_objects > self.max_det > 0:
-            raise Exception('Number of proposals (%i) for sequence %s exceeds number of maximum allowed proposals (%i).'
-                            % (num_objects, seq, self.max_det))
+            raise Exception(
+                'Number of proposals (%i) for sequence %s exceeds number of maximum allowed proposals (%i).'
+                % (num_objects, seq, self.max_det)
+            )
 
         if is_gt:
-            key_map = {'ids': 'gt_ids',
-                       'dets': 'gt_dets'}
+            key_map = {'ids': 'gt_ids', 'dets': 'gt_dets'}
         else:
-            key_map = {'ids': 'tracker_ids',
-                       'dets': 'tracker_dets'}
+            key_map = {'ids': 'tracker_ids', 'dets': 'tracker_dets'}
         for k, v in key_map.items():
             raw_data[v] = raw_data.pop(k)
-        raw_data["num_timesteps"] = num_timesteps
+        raw_data['num_timesteps'] = num_timesteps
         raw_data['mask_shape'] = np.array(Image.open(frames[0])).shape
         if is_gt:
             raw_data['num_gt_ids'] = num_objects
@@ -175,7 +199,7 @@ class DAVIS(_BaseDataset):
 
     @_timing.time
     def get_preprocessed_seq_data(self, raw_data, cls):
-        """ Preprocess data for a single sequence for a single class ready for evaluation.
+        """Preprocess data for a single sequence for a single class ready for evaluation.
         Inputs:
              - raw_data is a dict containing the data for the sequence already read in by get_raw_seq_data().
              - cls is the class to be evaluated.
@@ -235,7 +259,9 @@ class DAVIS(_BaseDataset):
         for t in range(num_timesteps):
             void_mask = raw_data['masks_void'][t]
             if mask_utils.area(void_mask) > 0:
-                void_mask_ious = np.atleast_1d(mask_utils.iou(raw_data['tracker_dets'][t], [void_mask], [False]))
+                void_mask_ious = np.atleast_1d(
+                    mask_utils.iou(raw_data['tracker_dets'][t], [void_mask], [False])
+                )
                 if void_mask_ious.any():
                     rows, columns = np.where(void_mask_ious > 0)
                     for r in rows:
@@ -272,5 +298,7 @@ class DAVIS(_BaseDataset):
         return data
 
     def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-        similarity_scores = self._calculate_mask_ious(gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False)
+        similarity_scores = self._calculate_mask_ious(
+            gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False
+        )
         return similarity_scores

@@ -1,12 +1,14 @@
-import os
-import csv
 import configparser
+import csv
+import os
+
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from ._base_dataset import _BaseDataset
-from .. import utils
-from .. import _timing
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
+from ._base_dataset import _BaseDataset
 
 
 class MOTSChallenge(_BaseDataset):
@@ -18,7 +20,9 @@ class MOTSChallenge(_BaseDataset):
         code_path = utils.get_code_path()
         default_config = {
             'GT_FOLDER': os.path.join(code_path, 'data/gt/mot_challenge/'),  # Location of GT data
-            'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/mot_challenge/'),  # Trackers location
+            'TRACKERS_FOLDER': os.path.join(
+                code_path, 'data/trackers/mot_challenge/'
+            ),  # Trackers location
             'OUTPUT_FOLDER': None,  # Where to save eval results (if None, same as TRACKERS_FOLDER)
             'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
             'CLASSES_TO_EVAL': ['pedestrian'],  # Valid: ['pedestrian']
@@ -33,8 +37,8 @@ class MOTSChallenge(_BaseDataset):
             'SEQ_INFO': None,  # If not None, directly specify sequences to eval and their number of timesteps
             'GT_LOC_FORMAT': '{gt_folder}/{seq}/gt/gt.txt',  # '{gt_folder}/{seq}/gt/gt.txt'
             'SKIP_SPLIT_FOL': False,  # If False, data is in GT_FOLDER/MOTS-SPLIT_TO_EVAL/ and in
-                                      # TRACKERS_FOLDER/MOTS-SPLIT_TO_EVAL/tracker/
-                                      # If True, then the middle 'MOTS-split' folder is skipped for both.
+            # TRACKERS_FOLDER/MOTS-SPLIT_TO_EVAL/tracker/
+            # If True, then the middle 'MOTS-split' folder is skipped for both.
         }
         return default_config
 
@@ -65,10 +69,14 @@ class MOTSChallenge(_BaseDataset):
 
         # Get classes to eval
         self.valid_classes = ['pedestrian']
-        self.class_list = [cls.lower() if cls.lower() in self.valid_classes else None
-                           for cls in self.config['CLASSES_TO_EVAL']]
+        self.class_list = [
+            cls.lower() if cls.lower() in self.valid_classes else None
+            for cls in self.config['CLASSES_TO_EVAL']
+        ]
         if not all(self.class_list):
-            raise TrackEvalException('Attempted to evaluate an invalid class. Only pedestrian class is valid.')
+            raise TrackEvalException(
+                'Attempted to evaluate an invalid class. Only pedestrian class is valid.'
+            )
         self.class_name_to_class_id = {'pedestrian': '2', 'ignore': '10'}
 
         # Get sequences to eval and check gt files exist
@@ -79,7 +87,7 @@ class MOTSChallenge(_BaseDataset):
         # Check gt files exist
         for seq in self.seq_list:
             if not self.data_is_zipped:
-                curr_file = self.config["GT_LOC_FORMAT"].format(gt_folder=self.gt_fol, seq=seq)
+                curr_file = self.config['GT_LOC_FORMAT'].format(gt_folder=self.gt_fol, seq=seq)
                 if not os.path.isfile(curr_file):
                     print('GT file not found ' + curr_file)
                     raise TrackEvalException('GT file not found for sequence: ' + seq)
@@ -98,25 +106,39 @@ class MOTSChallenge(_BaseDataset):
         if self.config['TRACKER_DISPLAY_NAMES'] is None:
             self.tracker_to_disp = dict(zip(self.tracker_list, self.tracker_list))
         elif (self.config['TRACKERS_TO_EVAL'] is not None) and (
-                len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)):
-            self.tracker_to_disp = dict(zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES']))
+            len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)
+        ):
+            self.tracker_to_disp = dict(
+                zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES'])
+            )
         else:
-            raise TrackEvalException('List of tracker files and tracker display names do not match.')
+            raise TrackEvalException(
+                'List of tracker files and tracker display names do not match.'
+            )
 
         for tracker in self.tracker_list:
             if self.data_is_zipped:
                 curr_file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol + '.zip')
                 if not os.path.isfile(curr_file):
                     print('Tracker file not found: ' + curr_file)
-                    raise TrackEvalException('Tracker file not found: ' + tracker + '/' + os.path.basename(curr_file))
+                    raise TrackEvalException(
+                        'Tracker file not found: ' + tracker + '/' + os.path.basename(curr_file)
+                    )
             else:
                 for seq in self.seq_list:
-                    curr_file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, seq + '.txt')
+                    curr_file = os.path.join(
+                        self.tracker_fol, tracker, self.tracker_sub_fol, seq + '.txt'
+                    )
                     if not os.path.isfile(curr_file):
                         print('Tracker file not found: ' + curr_file)
                         raise TrackEvalException(
-                            'Tracker file not found: ' + tracker + '/' + self.tracker_sub_fol + '/' + os.path.basename(
-                                curr_file))
+                            'Tracker file not found: '
+                            + tracker
+                            + '/'
+                            + self.tracker_sub_fol
+                            + '/'
+                            + os.path.basename(curr_file)
+                        )
 
     def get_display_name(self, tracker):
         return self.tracker_to_disp[tracker]
@@ -124,28 +146,32 @@ class MOTSChallenge(_BaseDataset):
     def _get_seq_info(self):
         seq_list = []
         seq_lengths = {}
-        if self.config["SEQ_INFO"]:
-            seq_list = list(self.config["SEQ_INFO"].keys())
-            seq_lengths = self.config["SEQ_INFO"]
+        if self.config['SEQ_INFO']:
+            seq_list = list(self.config['SEQ_INFO'].keys())
+            seq_lengths = self.config['SEQ_INFO']
 
             # If sequence length is 'None' tries to read sequence length from .ini files.
             for seq, seq_length in seq_lengths.items():
                 if seq_length is None:
                     ini_file = os.path.join(self.gt_fol, seq, 'seqinfo.ini')
                     if not os.path.isfile(ini_file):
-                        raise TrackEvalException('ini file does not exist: ' + seq + '/' + os.path.basename(ini_file))
+                        raise TrackEvalException(
+                            'ini file does not exist: ' + seq + '/' + os.path.basename(ini_file)
+                        )
                     ini_data = configparser.ConfigParser()
                     ini_data.read(ini_file)
                     seq_lengths[seq] = int(ini_data['Sequence']['seqLength'])
 
         else:
-            if self.config["SEQMAP_FILE"]:
-                seqmap_file = self.config["SEQMAP_FILE"]
+            if self.config['SEQMAP_FILE']:
+                seqmap_file = self.config['SEQMAP_FILE']
             else:
-                if self.config["SEQMAP_FOLDER"] is None:
-                    seqmap_file = os.path.join(self.config['GT_FOLDER'], 'seqmaps', self.gt_set + '.txt')
+                if self.config['SEQMAP_FOLDER'] is None:
+                    seqmap_file = os.path.join(
+                        self.config['GT_FOLDER'], 'seqmaps', self.gt_set + '.txt'
+                    )
                 else:
-                    seqmap_file = os.path.join(self.config["SEQMAP_FOLDER"], self.gt_set + '.txt')
+                    seqmap_file = os.path.join(self.config['SEQMAP_FOLDER'], self.gt_set + '.txt')
             if not os.path.isfile(seqmap_file):
                 print('no seqmap found: ' + seqmap_file)
                 raise TrackEvalException('no seqmap found: ' + os.path.basename(seqmap_file))
@@ -158,7 +184,9 @@ class MOTSChallenge(_BaseDataset):
                     seq_list.append(seq)
                     ini_file = os.path.join(self.gt_fol, seq, 'seqinfo.ini')
                     if not os.path.isfile(ini_file):
-                        raise TrackEvalException('ini file does not exist: ' + seq + '/' + os.path.basename(ini_file))
+                        raise TrackEvalException(
+                            'ini file does not exist: ' + seq + '/' + os.path.basename(ini_file)
+                        )
                     ini_data = configparser.ConfigParser()
                     ini_data.read(ini_file)
                     seq_lengths[seq] = int(ini_data['Sequence']['seqLength'])
@@ -190,7 +218,7 @@ class MOTSChallenge(_BaseDataset):
         else:
             zip_file = None
             if is_gt:
-                file = self.config["GT_LOC_FORMAT"].format(gt_folder=self.gt_fol, seq=seq)
+                file = self.config['GT_LOC_FORMAT'].format(gt_folder=self.gt_fol, seq=seq)
             else:
                 file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, seq + '.txt')
 
@@ -201,9 +229,13 @@ class MOTSChallenge(_BaseDataset):
             crowd_ignore_filter = None
 
         # Load raw data from text file
-        read_data, ignore_data = self._load_simple_text_file(file, crowd_ignore_filter=crowd_ignore_filter,
-                                                             is_zipped=self.data_is_zipped, zip_file=zip_file,
-                                                             force_delimiters=' ')
+        read_data, ignore_data = self._load_simple_text_file(
+            file,
+            crowd_ignore_filter=crowd_ignore_filter,
+            is_zipped=self.data_is_zipped,
+            zip_file=zip_file,
+            force_delimiters=' ',
+        )
 
         # Convert data to required format
         num_timesteps = self.seq_lengths[seq]
@@ -221,20 +253,30 @@ class MOTSChallenge(_BaseDataset):
             else:
                 text = 'Tracking'
             raise TrackEvalException(
-                text + ' data contains the following invalid timesteps in seq %s: ' % seq + ', '.join(
-                    [str(x) + ', ' for x in extra_time_keys]))
+                text
+                + ' data contains the following invalid timesteps in seq %s: ' % seq
+                + ', '.join([str(x) + ', ' for x in extra_time_keys])
+            )
 
         for t in range(num_timesteps):
-            time_key = str(t+1)
+            time_key = str(t + 1)
             # list to collect all masks of a timestep to check for overlapping areas
             all_masks = []
             if time_key in read_data.keys():
                 try:
-                    raw_data['dets'][t] = [{'size': [int(region[3]), int(region[4])],
-                                            'counts': region[5].encode(encoding='UTF-8')}
-                                           for region in read_data[time_key]]
-                    raw_data['ids'][t] = np.atleast_1d([region[1] for region in read_data[time_key]]).astype(int)
-                    raw_data['classes'][t] = np.atleast_1d([region[2] for region in read_data[time_key]]).astype(int)
+                    raw_data['dets'][t] = [
+                        {
+                            'size': [int(region[3]), int(region[4])],
+                            'counts': region[5].encode(encoding='UTF-8'),
+                        }
+                        for region in read_data[time_key]
+                    ]
+                    raw_data['ids'][t] = np.atleast_1d(
+                        [region[1] for region in read_data[time_key]]
+                    ).astype(int)
+                    raw_data['classes'][t] = np.atleast_1d(
+                        [region[2] for region in read_data[time_key]]
+                    ).astype(int)
                     all_masks += raw_data['dets'][t]
                 except IndexError:
                     self._raise_index_error(is_gt, tracker, seq)
@@ -247,11 +289,16 @@ class MOTSChallenge(_BaseDataset):
             if is_gt:
                 if time_key in ignore_data.keys():
                     try:
-                        time_ignore = [{'size': [int(region[3]), int(region[4])],
-                                        'counts': region[5].encode(encoding='UTF-8')}
-                                       for region in ignore_data[time_key]]
-                        raw_data['gt_ignore_region'][t] = mask_utils.merge([mask for mask in time_ignore],
-                                                                           intersect=False)
+                        time_ignore = [
+                            {
+                                'size': [int(region[3]), int(region[4])],
+                                'counts': region[5].encode(encoding='UTF-8'),
+                            }
+                            for region in ignore_data[time_key]
+                        ]
+                        raw_data['gt_ignore_region'][t] = mask_utils.merge(
+                            [mask for mask in time_ignore], intersect=False
+                        )
                         all_masks += [raw_data['gt_ignore_region'][t]]
                     except IndexError:
                         self._raise_index_error(is_gt, tracker, seq)
@@ -264,20 +311,24 @@ class MOTSChallenge(_BaseDataset):
             if all_masks:
                 masks_merged = all_masks[0]
                 for mask in all_masks[1:]:
-                    if mask_utils.area(mask_utils.merge([masks_merged, mask], intersect=True)) != 0.0:
+                    if (
+                        mask_utils.area(mask_utils.merge([masks_merged, mask], intersect=True))
+                        != 0.0
+                    ):
                         raise TrackEvalException(
-                            'Tracker has overlapping masks. Tracker: ' + tracker + ' Seq: ' + seq + ' Timestep: ' + str(
-                                t))
+                            'Tracker has overlapping masks. Tracker: '
+                            + tracker
+                            + ' Seq: '
+                            + seq
+                            + ' Timestep: '
+                            + str(t)
+                        )
                     masks_merged = mask_utils.merge([masks_merged, mask], intersect=False)
 
         if is_gt:
-            key_map = {'ids': 'gt_ids',
-                       'classes': 'gt_classes',
-                       'dets': 'gt_dets'}
+            key_map = {'ids': 'gt_ids', 'classes': 'gt_classes', 'dets': 'gt_dets'}
         else:
-            key_map = {'ids': 'tracker_ids',
-                       'classes': 'tracker_classes',
-                       'dets': 'tracker_dets'}
+            key_map = {'ids': 'tracker_ids', 'classes': 'tracker_classes', 'dets': 'tracker_dets'}
         for k, v in key_map.items():
             raw_data[v] = raw_data.pop(k)
         raw_data['num_timesteps'] = num_timesteps
@@ -286,7 +337,7 @@ class MOTSChallenge(_BaseDataset):
 
     @_timing.time
     def get_preprocessed_seq_data(self, raw_data, cls):
-        """ Preprocess data for a single sequence for a single class ready for evaluation.
+        """Preprocess data for a single sequence for a single class ready for evaluation.
         Inputs:
              - raw_data is a dict containing the data for the sequence already read in by get_raw_seq_data().
              - cls is the class to be evaluated.
@@ -329,19 +380,27 @@ class MOTSChallenge(_BaseDataset):
         num_gt_dets = 0
         num_tracker_dets = 0
         for t in range(raw_data['num_timesteps']):
-
             # Only extract relevant dets for this class for preproc and eval (cls)
             gt_class_mask = np.atleast_1d(raw_data['gt_classes'][t] == cls_id)
             gt_class_mask = gt_class_mask.astype(bool)
             gt_ids = raw_data['gt_ids'][t][gt_class_mask]
-            gt_dets = [raw_data['gt_dets'][t][ind] for ind in range(len(gt_class_mask)) if gt_class_mask[ind]]
+            gt_dets = [
+                raw_data['gt_dets'][t][ind]
+                for ind in range(len(gt_class_mask))
+                if gt_class_mask[ind]
+            ]
 
             tracker_class_mask = np.atleast_1d(raw_data['tracker_classes'][t] == cls_id)
             tracker_class_mask = tracker_class_mask.astype(bool)
             tracker_ids = raw_data['tracker_ids'][t][tracker_class_mask]
-            tracker_dets = [raw_data['tracker_dets'][t][ind] for ind in range(len(tracker_class_mask)) if
-                            tracker_class_mask[ind]]
-            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][:, tracker_class_mask]
+            tracker_dets = [
+                raw_data['tracker_dets'][t][ind]
+                for ind in range(len(tracker_class_mask))
+                if tracker_class_mask[ind]
+            ]
+            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][
+                :, tracker_class_mask
+            ]
 
             # Match tracker and gt dets (with hungarian algorithm)
             unmatched_indices = np.arange(tracker_ids.shape[0])
@@ -349,17 +408,24 @@ class MOTSChallenge(_BaseDataset):
                 matching_scores = similarity_scores.copy()
                 matching_scores[matching_scores < 0.5 - np.finfo('float').eps] = -10000
                 match_rows, match_cols = linear_sum_assignment(-matching_scores)
-                actually_matched_mask = matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                actually_matched_mask = (
+                    matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                )
                 match_cols = match_cols[actually_matched_mask]
 
                 unmatched_indices = np.delete(unmatched_indices, match_cols, axis=0)
 
             # For unmatched tracker dets, remove those that are greater than 50% within a crowd ignore region.
-            unmatched_tracker_dets = [tracker_dets[i] for i in range(len(tracker_dets)) if i in unmatched_indices]
+            unmatched_tracker_dets = [
+                tracker_dets[i] for i in range(len(tracker_dets)) if i in unmatched_indices
+            ]
             ignore_region = raw_data['gt_ignore_region'][t]
-            intersection_with_ignore_region = self._calculate_mask_ious(unmatched_tracker_dets, [ignore_region],
-                                                                        is_encoded=True, do_ioa=True)
-            is_within_ignore_region = np.any(intersection_with_ignore_region > 0.5 + np.finfo('float').eps, axis=1)
+            intersection_with_ignore_region = self._calculate_mask_ious(
+                unmatched_tracker_dets, [ignore_region], is_encoded=True, do_ioa=True
+            )
+            is_within_ignore_region = np.any(
+                intersection_with_ignore_region > 0.5 + np.finfo('float').eps, axis=1
+            )
 
             # Apply preprocessing to remove unwanted tracker dets.
             to_remove_tracker = unmatched_indices[is_within_ignore_region]
@@ -407,7 +473,9 @@ class MOTSChallenge(_BaseDataset):
         return data
 
     def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-        similarity_scores = self._calculate_mask_ious(gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False)
+        similarity_scores = self._calculate_mask_ious(
+            gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False
+        )
         return similarity_scores
 
     @staticmethod
@@ -420,12 +488,16 @@ class MOTSChallenge(_BaseDataset):
         :return: None
         """
         if is_gt:
-            err = 'Cannot load gt data from sequence %s, because there are not enough ' \
-                  'columns in the data.' % seq
+            err = (
+                'Cannot load gt data from sequence %s, because there are not enough '
+                'columns in the data.' % seq
+            )
             raise TrackEvalException(err)
         else:
-            err = 'Cannot load tracker data from tracker %s, sequence %s, because there are not enough ' \
-                  'columns in the data.' % (tracker, seq)
+            err = (
+                'Cannot load tracker data from tracker %s, sequence %s, because there are not enough '
+                'columns in the data.' % (tracker, seq)
+            )
             raise TrackEvalException(err)
 
     @staticmethod
@@ -439,8 +511,11 @@ class MOTSChallenge(_BaseDataset):
         """
         if is_gt:
             raise TrackEvalException(
-                'GT data for sequence %s cannot be converted to the right format. Is data corrupted?' % seq)
+                'GT data for sequence %s cannot be converted to the right format. Is data corrupted?'
+                % seq
+            )
         else:
             raise TrackEvalException(
                 'Tracking data from tracker %s, sequence %s cannot be converted to the right format. '
-                'Is data corrupted?' % (tracker, seq))
+                'Is data corrupted?' % (tracker, seq)
+            )

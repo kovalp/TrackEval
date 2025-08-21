@@ -1,9 +1,10 @@
-import numpy as np
-from ._base_metric import _BaseMetric
-from .. import _timing
 from functools import partial
-from .. import utils
+
+import numpy as np
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
+from ._base_metric import _BaseMetric
 
 
 class TrackMAP(_BaseMetric):
@@ -14,19 +15,27 @@ class TrackMAP(_BaseMetric):
         """Default class config values"""
         default_config = {
             'USE_AREA_RANGES': True,  # whether to evaluate for certain area ranges
-            'AREA_RANGES': [[0 ** 2, 32 ** 2],  # additional area range sets for which TrackMAP is evaluated
-                            [32 ** 2, 96 ** 2],  # (all area range always included), default values for TAO
-                            [96 ** 2, 1e5 ** 2]],  # evaluation
-            'AREA_RANGE_LABELS': ["area_s", "area_m", "area_l"],  # the labels for the area ranges
+            'AREA_RANGES': [
+                [0**2, 32**2],  # additional area range sets for which TrackMAP is evaluated
+                [32**2, 96**2],  # (all area range always included), default values for TAO
+                [96**2, 1e5**2],
+            ],  # evaluation
+            'AREA_RANGE_LABELS': ['area_s', 'area_m', 'area_l'],  # the labels for the area ranges
             'USE_TIME_RANGES': True,  # whether to evaluate for certain time ranges (length of tracks)
-            'TIME_RANGES': [[0, 3], [3, 10], [10, 1e5]],  # additional time range sets for which TrackMAP is evaluated
+            'TIME_RANGES': [
+                [0, 3],
+                [3, 10],
+                [10, 1e5],
+            ],  # additional time range sets for which TrackMAP is evaluated
             # (all time range always included) , default values for TAO evaluation
-            'TIME_RANGE_LABELS': ["time_s", "time_m", "time_l"],  # the labels for the time ranges
+            'TIME_RANGE_LABELS': ['time_s', 'time_m', 'time_l'],  # the labels for the time ranges
             'IOU_THRESHOLDS': np.arange(0.5, 0.96, 0.05),  # the IoU thresholds
-            'RECALL_THRESHOLDS': np.linspace(0.0, 1.00, int(np.round((1.00 - 0.0) / 0.01) + 1), endpoint=True),
+            'RECALL_THRESHOLDS': np.linspace(
+                0.0, 1.00, int(np.round((1.00 - 0.0) / 0.01) + 1), endpoint=True
+            ),
             # recall thresholds at which precision is evaluated
             'MAX_DETECTIONS': 0,  # limit the maximum number of considered tracks per sequence (0 for unlimited)
-            'PRINT_CONFIG': True
+            'PRINT_CONFIG': True,
         }
         return default_config
 
@@ -54,7 +63,9 @@ class TrackMAP(_BaseMetric):
         self.rec_thrs = self.config['RECALL_THRESHOLDS']
 
         self.maxDet = self.config['MAX_DETECTIONS']
-        self.float_array_fields = ['AP_' + lbl for lbl in self.lbls] + ['AR_' + lbl for lbl in self.lbls]
+        self.float_array_fields = ['AP_' + lbl for lbl in self.lbls] + [
+            'AR_' + lbl for lbl in self.lbls
+        ]
         self.fields = self.float_array_fields
         self.summary_fields = self.float_array_fields
 
@@ -84,20 +95,27 @@ class TrackMAP(_BaseMetric):
         is_nel = data.get('not_exhaustively_labeled', False)
 
         # compute ignore masks for different track sets to eval
-        gt_ig_masks = self._compute_track_ig_masks(len(gt_ids), track_lengths=gt_tr_lengths, track_areas=gt_tr_areas,
-                                                   iscrowd=gt_tr_iscrowd)
-        dt_ig_masks = self._compute_track_ig_masks(len(dt_ids), track_lengths=dt_tr_lengths, track_areas=dt_tr_areas,
-                                                   is_not_exhaustively_labeled=is_nel, is_gt=False)
+        gt_ig_masks = self._compute_track_ig_masks(
+            len(gt_ids), track_lengths=gt_tr_lengths, track_areas=gt_tr_areas, iscrowd=gt_tr_iscrowd
+        )
+        dt_ig_masks = self._compute_track_ig_masks(
+            len(dt_ids),
+            track_lengths=dt_tr_lengths,
+            track_areas=dt_tr_areas,
+            is_not_exhaustively_labeled=is_nel,
+            is_gt=False,
+        )
 
         boxformat = data.get('boxformat', 'xywh')
-        ious = self._compute_track_ious(data['dt_tracks'], data['gt_tracks'], iou_function=data['iou_type'],
-                                        boxformat=boxformat)
+        ious = self._compute_track_ious(
+            data['dt_tracks'], data['gt_tracks'], iou_function=data['iou_type'], boxformat=boxformat
+        )
 
         for mask_idx in range(self.num_ig_masks):
             gt_ig_mask = gt_ig_masks[mask_idx]
 
             # Sort gt ignore last
-            gt_idx = np.argsort([g for g in gt_ig_mask], kind="mergesort")
+            gt_idx = np.argsort([g for g in gt_ig_mask], kind='mergesort')
             gt_ids = [gt_ids[i] for i in gt_idx]
 
             ious_sorted = ious[:, gt_idx] if len(ious) > 0 else ious
@@ -156,13 +174,13 @@ class TrackMAP(_BaseMetric):
             dt_ig = np.logical_or(dt_ig, np.logical_and(dt_m == -1, dt_ig_mask))
             # store results for given video and category
             res[mask_idx] = {
-                "dt_ids": dt_ids,
-                "gt_ids": gt_ids,
-                "dt_matches": dt_m,
-                "gt_matches": gt_m,
-                "dt_scores": data['dt_track_scores'],
-                "gt_ignore": gt_ig,
-                "dt_ignore": dt_ig,
+                'dt_ids': dt_ids,
+                'gt_ids': gt_ids,
+                'dt_matches': dt_m,
+                'gt_matches': gt_m,
+                'dt_scores': data['dt_track_scores'],
+                'gt_ignore': gt_ig,
+                'dt_ignore': dt_ig,
             }
 
         return res
@@ -175,9 +193,7 @@ class TrackMAP(_BaseMetric):
         num_recalls = len(self.rec_thrs)
 
         # -1 for absent categories
-        precision = -np.ones(
-            (num_thrs, num_recalls, self.num_ig_masks)
-        )
+        precision = -np.ones((num_thrs, num_recalls, self.num_ig_masks))
         recall = -np.ones((num_thrs, self.num_ig_masks))
 
         for ig_idx in range(self.num_ig_masks):
@@ -190,27 +206,31 @@ class TrackMAP(_BaseMetric):
             # Append all scores: shape (N,)
             # limit considered tracks for each sequence if maxDet > 0
             if self.maxDet == 0:
-                dt_scores = np.concatenate([res["dt_scores"] for res in ig_idx_results], axis=0)
+                dt_scores = np.concatenate([res['dt_scores'] for res in ig_idx_results], axis=0)
 
-                dt_idx = np.argsort(-dt_scores, kind="mergesort")
+                dt_idx = np.argsort(-dt_scores, kind='mergesort')
 
-                dt_m = np.concatenate([e["dt_matches"] for e in ig_idx_results],
-                                      axis=1)[:, dt_idx]
-                dt_ig = np.concatenate([e["dt_ignore"] for e in ig_idx_results],
-                                       axis=1)[:, dt_idx]
+                dt_m = np.concatenate([e['dt_matches'] for e in ig_idx_results], axis=1)[:, dt_idx]
+                dt_ig = np.concatenate([e['dt_ignore'] for e in ig_idx_results], axis=1)[:, dt_idx]
             elif self.maxDet > 0:
-                dt_scores = np.concatenate([res["dt_scores"][0:self.maxDet] for res in ig_idx_results], axis=0)
+                dt_scores = np.concatenate(
+                    [res['dt_scores'][0 : self.maxDet] for res in ig_idx_results], axis=0
+                )
 
-                dt_idx = np.argsort(-dt_scores, kind="mergesort")
+                dt_idx = np.argsort(-dt_scores, kind='mergesort')
 
-                dt_m = np.concatenate([e["dt_matches"][:, 0:self.maxDet] for e in ig_idx_results],
-                                      axis=1)[:, dt_idx]
-                dt_ig = np.concatenate([e["dt_ignore"][:, 0:self.maxDet] for e in ig_idx_results],
-                                       axis=1)[:, dt_idx]
+                dt_m = np.concatenate(
+                    [e['dt_matches'][:, 0 : self.maxDet] for e in ig_idx_results], axis=1
+                )[:, dt_idx]
+                dt_ig = np.concatenate(
+                    [e['dt_ignore'][:, 0 : self.maxDet] for e in ig_idx_results], axis=1
+                )[:, dt_idx]
             else:
-                raise Exception("Number of maximum detections must be >= 0, but is set to %i" % self.maxDet)
+                raise Exception(
+                    'Number of maximum detections must be >= 0, but is set to %i' % self.maxDet
+                )
 
-            gt_ig = np.concatenate([res["gt_ignore"] for res in ig_idx_results])
+            gt_ig = np.concatenate([res['gt_ignore'] for res in ig_idx_results])
             # num gt anns to consider
             num_gt = np.count_nonzero(gt_ig == 0)
 
@@ -243,7 +263,7 @@ class TrackMAP(_BaseMetric):
                         pr[i - 1] = pr[i]
 
                 # find indices at the predefined recall values
-                rec_thrs_insert_idx = np.searchsorted(rc, self.rec_thrs, side="left")
+                rec_thrs_insert_idx = np.searchsorted(rc, self.rec_thrs, side='left')
 
                 pr_at_recall = [0.0] * num_recalls
 
@@ -253,7 +273,7 @@ class TrackMAP(_BaseMetric):
                 except IndexError:
                     pass
 
-                precision[iou_thr_idx, :, ig_idx] = (np.array(pr_at_recall))
+                precision[iou_thr_idx, :, ig_idx] = np.array(pr_at_recall)
 
         res = {'precision': precision, 'recall': recall}
 
@@ -309,8 +329,15 @@ class TrackMAP(_BaseMetric):
                 res[field][a_id] = mean
         return res
 
-    def _compute_track_ig_masks(self, num_ids, track_lengths=None, track_areas=None, iscrowd=None,
-                                is_not_exhaustively_labeled=False, is_gt=True):
+    def _compute_track_ig_masks(
+        self,
+        num_ids,
+        track_lengths=None,
+        track_areas=None,
+        iscrowd=None,
+        is_not_exhaustively_labeled=False,
+        is_gt=True,
+    ):
         """
         Computes ignore masks for different track sets to evaluate
         :param num_ids: the number of track IDs
@@ -331,14 +358,30 @@ class TrackMAP(_BaseMetric):
             # consider tracks with certain area
             if self.use_area_rngs:
                 for rng in self.area_rngs:
-                    track_ig_masks.append([0 if rng[0] - np.finfo('float').eps <= area <= rng[1] + np.finfo('float').eps
-                                           else 1 for area in track_areas])
+                    track_ig_masks.append(
+                        [
+                            0
+                            if rng[0] - np.finfo('float').eps
+                            <= area
+                            <= rng[1] + np.finfo('float').eps
+                            else 1
+                            for area in track_areas
+                        ]
+                    )
 
             # consider tracks with certain duration
             if self.use_time_rngs:
                 for rng in self.time_rngs:
-                    track_ig_masks.append([0 if rng[0] - np.finfo('float').eps <= length
-                                                <= rng[1] + np.finfo('float').eps else 1 for length in track_lengths])
+                    track_ig_masks.append(
+                        [
+                            0
+                            if rng[0] - np.finfo('float').eps
+                            <= length
+                            <= rng[1] + np.finfo('float').eps
+                            else 1
+                            for length in track_lengths
+                        ]
+                    )
 
         # for YouTubeVIS evaluation tracks with crowd tag are not evaluated
         if is_gt and iscrowd:
@@ -394,7 +437,9 @@ class TrackMAP(_BaseMetric):
             else:
                 raise TrackEvalException('BoxFormat not implemented')
         if intersect > union:
-            raise TrackEvalException("Intersection value > union value. Are the box values corrupted?")
+            raise TrackEvalException(
+                'Intersection value > union value. Are the box values corrupted?'
+            )
         return intersect / union if union > 0 else 0
 
     @staticmethod
@@ -410,8 +455,8 @@ class TrackMAP(_BaseMetric):
         # only loaded when needed to reduce minimum requirements
         from pycocotools import mask as mask_utils
 
-        intersect = .0
-        union = .0
+        intersect = 0.0
+        union = 0.0
         image_ids = set(gt_track.keys()) | set(dt_track.keys())
         for image in image_ids:
             g = gt_track.get(image, None)
@@ -424,9 +469,11 @@ class TrackMAP(_BaseMetric):
             elif d and not g:
                 union += mask_utils.area(d)
         if union < 0.0 - np.finfo('float').eps:
-            raise TrackEvalException("Union value < 0. Are the segmentaions corrupted?")
+            raise TrackEvalException('Union value < 0. Are the segmentaions corrupted?')
         if intersect > union:
-            raise TrackEvalException("Intersection value > union value. Are the segmentations corrupted?")
+            raise TrackEvalException(
+                'Intersection value > union value. Are the segmentations corrupted?'
+            )
         iou = intersect / union if union > 0.0 + np.finfo('float').eps else 0.0
         return iou
 

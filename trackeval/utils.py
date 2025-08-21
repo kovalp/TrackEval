@@ -1,7 +1,7 @@
-
-import os
-import csv
 import argparse
+import csv
+import os
+
 from collections import OrderedDict
 
 
@@ -28,23 +28,23 @@ def update_config(config):
     """
     parser = argparse.ArgumentParser()
     for setting in config.keys():
-        if type(config[setting]) == list or type(config[setting]) == type(None):
-            parser.add_argument("--" + setting, nargs='+')
+        if isinstance(config[setting], list) or config[setting] is None:
+            parser.add_argument('--' + setting, nargs='+')
         else:
-            parser.add_argument("--" + setting)
+            parser.add_argument('--' + setting)
     args = parser.parse_args().__dict__
     for setting in args.keys():
         if args[setting] is not None:
-            if type(config[setting]) == type(True):
+            if isinstance(config[setting], bool):
                 if args[setting] == 'True':
                     x = True
                 elif args[setting] == 'False':
                     x = False
                 else:
                     raise Exception('Command line parameter ' + setting + 'must be True or False')
-            elif type(config[setting]) == type(1):
+            elif isinstance(config[setting], int):
                 x = int(args[setting])
-            elif type(args[setting]) == type(None):
+            elif args[setting] is None:
                 x = None
             else:
                 x = args[setting]
@@ -70,7 +70,9 @@ def validate_metrics_list(metrics_list):
         fields += m.fields
     # check metric fields are unique
     if len(fields) != len(set(fields)):
-        raise TrackEvalException('Code being run with multiple metrics with fields of the same name')
+        raise TrackEvalException(
+            'Code being run with multiple metrics with fields of the same name'
+        )
     return metric_names
 
 
@@ -84,10 +86,47 @@ def write_summary_results(summaries, cls, output_folder):
     # they will be output in the summary first in the order below. Any further fields will be output in the order each
     # metric family is called, and within each family either in the order they were added to the dict (python >= 3.6) or
     # randomly (python < 3.6).
-    default_order = ['HOTA', 'DetA', 'AssA', 'DetRe', 'DetPr', 'AssRe', 'AssPr', 'LocA', 'OWTA', 'HOTA(0)', 'LocA(0)',
-                     'HOTALocA(0)', 'MOTA', 'MOTP', 'MODA', 'CLR_Re', 'CLR_Pr', 'MTR', 'PTR', 'MLR', 'CLR_TP', 'CLR_FN',
-                     'CLR_FP', 'IDSW', 'MT', 'PT', 'ML', 'Frag', 'sMOTA', 'IDF1', 'IDR', 'IDP', 'IDTP', 'IDFN', 'IDFP',
-                     'Dets', 'GT_Dets', 'IDs', 'GT_IDs']
+    default_order = [
+        'HOTA',
+        'DetA',
+        'AssA',
+        'DetRe',
+        'DetPr',
+        'AssRe',
+        'AssPr',
+        'LocA',
+        'OWTA',
+        'HOTA(0)',
+        'LocA(0)',
+        'HOTALocA(0)',
+        'MOTA',
+        'MOTP',
+        'MODA',
+        'CLR_Re',
+        'CLR_Pr',
+        'MTR',
+        'PTR',
+        'MLR',
+        'CLR_TP',
+        'CLR_FN',
+        'CLR_FP',
+        'IDSW',
+        'MT',
+        'PT',
+        'ML',
+        'Frag',
+        'sMOTA',
+        'IDF1',
+        'IDR',
+        'IDP',
+        'IDTP',
+        'IDFN',
+        'IDFP',
+        'Dets',
+        'GT_Dets',
+        'IDs',
+        'GT_IDs',
+    ]
     default_ordered_dict = OrderedDict(zip(default_order, [None for _ in default_order]))
     for f, v in zip(fields, values):
         default_ordered_dict[f] = v
@@ -143,4 +182,5 @@ def load_detail(file):
 
 class TrackEvalException(Exception):
     """Custom exception for catching expected errors."""
+
     ...

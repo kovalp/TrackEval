@@ -9,31 +9,34 @@ detections. It is also able to match detections to tracks at more than one times
 
 import os
 import sys
-import numpy as np
-from multiprocessing.pool import Pool
+
 from multiprocessing import freeze_support
+from multiprocessing.pool import Pool
+
+import numpy as np
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from trackeval.baselines import baseline_utils as butils
 from trackeval.utils import get_code_path
 
+
 code_path = get_code_path()
 config = {
-    'INPUT_FOL': os.path.join(code_path, 'data/detections/rob_mots/{split}/non_overlap_supplied/data/'),
+    'INPUT_FOL': os.path.join(
+        code_path, 'data/detections/rob_mots/{split}/non_overlap_supplied/data/'
+    ),
     'OUTPUT_FOL': os.path.join(code_path, 'data/trackers/rob_mots/{split}/STP/data/'),
     'SPLIT': 'train',  # valid: 'train', 'val', 'test'.
     'Benchmarks': None,  # If None, all benchmarks in SPLIT.
-
     'Num_Parallel_Cores': None,  # If None, run without parallel.
-
     'DETECTION_THRESHOLD': 0.5,
     'ASSOCIATION_THRESHOLD': 1e-10,
-    'MAX_FRAMES_SKIP': 7
+    'MAX_FRAMES_SKIP': 7,
 }
 
 
 def track_sequence(seq_file):
-
     # Load input data from file (e.g. provided detections)
     # data format: data['cls'][t] = {'ids', 'scores', 'im_hs', 'im_ws', 'mask_rles'}
     data = butils.load_seq(seq_file)
@@ -46,15 +49,11 @@ def track_sequence(seq_file):
 
     # Run tracker for each class.
     for cls, cls_data in data.items():
-
         # Initialize container for holding previously tracked objects.
-        prev = {'boxes': np.empty((0, 4)),
-                'ids': np.array([], int),
-                'timesteps': np.array([])}
+        prev = {'boxes': np.empty((0, 4)), 'ids': np.array([], int), 'timesteps': np.array([])}
 
         # Run tracker for each timestep.
         for timestep, t_data in enumerate(cls_data):
-
             # Threshold detections.
             t_data = butils.threshold(t_data, config['DETECTION_THRESHOLD'])
 
@@ -92,31 +91,46 @@ def track_sequence(seq_file):
             curr_max_id += num_not_matched
 
             # Drop tracks from 'previous tracks' if they have not been matched in the last MAX_FRAMES_SKIP frames.
-            unmatched_rows = [i for i in range(len(prev['ids'])) if
-                              i not in match_rows and (prev['timesteps'][i] + 1 <= config['MAX_FRAMES_SKIP'])]
+            unmatched_rows = [
+                i
+                for i in range(len(prev['ids']))
+                if i not in match_rows and (prev['timesteps'][i] + 1 <= config['MAX_FRAMES_SKIP'])
+            ]
 
             # Update the set of previous tracking results to include the newly tracked detections.
             prev['ids'] = np.concatenate((ids, prev['ids'][unmatched_rows]), axis=0)
-            prev['boxes'] = np.concatenate((np.atleast_2d(boxes), np.atleast_2d(prev['boxes'][unmatched_rows])), axis=0)
-            prev['timesteps'] = np.concatenate((np.zeros((len(ids),)), prev['timesteps'][unmatched_rows] + 1), axis=0)
+            prev['boxes'] = np.concatenate(
+                (np.atleast_2d(boxes), np.atleast_2d(prev['boxes'][unmatched_rows])), axis=0
+            )
+            prev['timesteps'] = np.concatenate(
+                (np.zeros((len(ids),)), prev['timesteps'][unmatched_rows] + 1), axis=0
+            )
 
             # Save result in output format to write to file later.
             # Output Format = [timestep ID class score im_h im_w mask_RLE]
             for i in range(len(t_data['ids'])):
-                row = [timestep, int(ids[i]), cls, t_data['scores'][i], t_data['im_hs'][i], t_data['im_ws'][i],
-                       t_data['mask_rles'][i]]
+                row = [
+                    timestep,
+                    int(ids[i]),
+                    cls,
+                    t_data['scores'][i],
+                    t_data['im_hs'][i],
+                    t_data['im_ws'][i],
+                    t_data['mask_rles'][i],
+                ]
                 output_data.append(row)
 
     # Write results to file
-    out_file = seq_file.replace(config['INPUT_FOL'].format(split=config['SPLIT']),
-                                config['OUTPUT_FOL'].format(split=config['SPLIT']))
+    out_file = seq_file.replace(
+        config['INPUT_FOL'].format(split=config['SPLIT']),
+        config['OUTPUT_FOL'].format(split=config['SPLIT']),
+    )
     butils.write_seq(output_data, out_file)
 
     print('DONE:', seq_file)
 
 
 if __name__ == '__main__':
-
     # Required to fix bug in multiprocessing on windows.
     freeze_support()
 
@@ -141,4 +155,3 @@ if __name__ == '__main__':
     else:
         for seq_todo in seqs_todo:
             track_sequence(seq_todo)
-

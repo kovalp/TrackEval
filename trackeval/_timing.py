@@ -1,6 +1,8 @@
+import inspect
+
 from functools import wraps
 from time import perf_counter
-import inspect
+
 
 DO_TIMING = False
 DISPLAY_LESS_PROGRESS = False
@@ -16,7 +18,7 @@ def time(f):
             ts = perf_counter()
             result = f(*args, **kw)
             te = perf_counter()
-            tt = te-ts
+            tt = te - ts
 
             # Get function name
             arg_names = inspect.getfullargspec(f)[0]
@@ -34,9 +36,9 @@ def time(f):
                 timer_dict[method_name] = tt
 
             # If code is finished, display timing summary
-            if method_name == "Evaluator.evaluate":
-                print("")
-                print("Timing analysis:")
+            if method_name == 'Evaluator.evaluate':
+                print('')
+                print('Timing analysis:')
                 for key, value in timer_dict.items():
                     print('%-70s %2.4f sec' % (key, value))
             else:
@@ -50,7 +52,7 @@ def time(f):
 
                 # Display methods and functions with different indentation.
                 if arg_names[0] == 'self':
-                    print('%-74s %2.4f sec' % (' '*4 + method_name + arg_text, tt))
+                    print('%-74s %2.4f sec' % (' ' * 4 + method_name + arg_text, tt))
                 elif arg_names[0] == 'test':
                     pass
                 else:
@@ -62,4 +64,5 @@ def time(f):
         else:
             # If config["TIME_PROGRESS"] is false, or config["USE_PARALLEL"] is true, run functions normally without timing.
             return f(*args, **kw)
+
     return wrap
