@@ -3,14 +3,15 @@ name = "trackeval"
 version = "1.0.0"
 description = "Different tracking evaluation metrics including HOTA metrics."
 readme = "README.md"
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.8,<3.12"
 dependencies = [
     "matplotlib>=3.6.3",
     "numpy>=1.19.5,<2.0",
     "opencv-python>=4.5.4.60",
     "pillow>=10.4.0",
     "pycocotools>=2.0.7",
-    "scikit-image>=0.19.3",
+    "scikit-image>=0.19.3; python_version<'3.11'",
+    "scikit-image>=0.25.0; python_version>'3.10'", 
     "scipy>=1.10.1",
     "tabulate>=0.9.0",
 ]
