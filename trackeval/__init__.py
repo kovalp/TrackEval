@@ -1,6 +1,6 @@
 """."""
 
-__version__ = '0.1.5'
+__version__ = '1.0.0'
 
 from .eval import Evaluator
 from . import datasets
