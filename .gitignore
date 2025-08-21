@@ -13,3 +13,4 @@ data
 error_log.txt
 /trackeval.egg-info/
 /.python-version
+/.coverage
