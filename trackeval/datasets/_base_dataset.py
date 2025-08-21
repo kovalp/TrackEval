@@ -1,11 +1,14 @@
 import csv
 import io
-import zipfile
 import os
 import traceback
-import numpy as np
-from copy import deepcopy
+import zipfile
+
 from abc import ABC, abstractmethod
+from copy import deepcopy
+
+import numpy as np
+
 from .. import _timing
 from ..utils import TrackEvalException
 

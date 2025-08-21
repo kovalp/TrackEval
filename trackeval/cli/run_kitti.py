@@ -30,9 +30,11 @@ Command Line Arguments: Defaults, # Comments
         'METRICS': ['Hota','Clear', 'ID', 'Count']
 """
 
-from typing import Union, Sequence
 from multiprocessing import freeze_support
+from typing import Sequence, Union
+
 import trackeval
+
 from trackeval.cli.modify_with_cmd_line import modify_with_cmd_line
 
 

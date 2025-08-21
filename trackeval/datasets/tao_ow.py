@@ -1,13 +1,16 @@
-import os
-import numpy as np
-import json
 import itertools
+import json
+import os
+
 from collections import defaultdict
+
+import numpy as np
+
 from scipy.optimize import linear_sum_assignment
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
 from ._base_dataset import _BaseDataset
-from .. import utils
-from .. import _timing
 
 
 class TAO_OW(_BaseDataset):

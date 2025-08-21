@@ -1,12 +1,14 @@
+import os
 import time
 import traceback
-from multiprocessing.pool import Pool
+
 from functools import partial
-import os
-from . import utils
-from .utils import TrackEvalException
-from . import _timing
+from multiprocessing.pool import Pool
+
+from . import _timing, utils
 from .metrics import Count
+from .utils import TrackEvalException
+
 
 try:
     import tqdm

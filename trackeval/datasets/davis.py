@@ -1,10 +1,11 @@
-import os
 import csv
+import os
+
 import numpy as np
-from ._base_dataset import _BaseDataset
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
-from .. import utils
-from .. import _timing
+from ._base_dataset import _BaseDataset
 
 
 class DAVIS(_BaseDataset):
@@ -120,8 +121,8 @@ class DAVIS(_BaseDataset):
         """
 
         # Only loaded when run to reduce minimum requirements
-        from pycocotools import mask as mask_utils
         from PIL import Image
+        from pycocotools import mask as mask_utils
 
         # File location
         if is_gt:
