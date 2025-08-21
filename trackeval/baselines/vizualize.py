@@ -6,13 +6,16 @@ Author: Jonathon Luiten
 
 import os
 import sys
-from multiprocessing.pool import Pool
+
 from multiprocessing import freeze_support
+from multiprocessing.pool import Pool
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from trackeval.baselines import baseline_utils as butils
-from trackeval.utils import get_code_path
 from trackeval.datasets.rob_mots_classmap import cls_id_to_name
+from trackeval.utils import get_code_path
+
 
 code_path = get_code_path()
 config = {
@@ -30,8 +33,10 @@ config = {
 
 def do_sequence(seq_file):
     # Folder to save resulting visualization in
-    out_fol = seq_file.replace(config['INPUT_FOL'].format(split=config['SPLIT'], bench=bench),
-                               config['OUTPUT_FOL'].format(split=config['SPLIT'], bench=bench)).replace('.txt', '')
+    out_fol = seq_file.replace(
+        config['INPUT_FOL'].format(split=config['SPLIT'], bench=bench),
+        config['OUTPUT_FOL'].format(split=config['SPLIT'], bench=bench),
+    ).replace('.txt', '')
 
     # Load input data from file (e.g. provided detections)
     # data format: data['cls'][t] = {'ids', 'scores', 'im_hs', 'im_ws', 'mask_rles'}
@@ -42,7 +47,6 @@ def do_sequence(seq_file):
 
     # First run for each class.
     for cls, cls_data in data.items():
-
         if cls >= 100:
             continue
 
@@ -51,7 +55,6 @@ def do_sequence(seq_file):
             # Save out visualization
             out_file = os.path.join(out_fol, cls_id_to_name[cls], str(timestep).zfill(5) + '.png')
             butils.save_as_png(t_data, out_file, im_h, im_w)
-
 
     # Then run for all classes combined
     # Converts data from a class-separated to a class-combined format.
@@ -67,7 +70,6 @@ def do_sequence(seq_file):
 
 
 if __name__ == '__main__':
-
     # Required to fix bug in multiprocessing on windows.
     freeze_support()
 

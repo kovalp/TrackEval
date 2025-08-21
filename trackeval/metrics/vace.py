@@ -1,7 +1,9 @@
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from ._base_metric import _BaseMetric
+
 from .. import _timing
+from ._base_metric import _BaseMetric
 
 
 class VACE(_BaseMetric):
@@ -57,9 +59,9 @@ class VACE(_BaseMetric):
             tracker_id_count[tracker_ids_t] += 1
             both_present_count[gt_ids_t[:, np.newaxis], tracker_ids_t[np.newaxis, :]] += 1
         # Number of frames in which either track is present (union of the two sets of frames).
-        union_count = (gt_id_count[:, np.newaxis]
-                       + tracker_id_count[np.newaxis, :]
-                       - both_present_count)
+        union_count = (
+            gt_id_count[:, np.newaxis] + tracker_id_count[np.newaxis, :] - both_present_count
+        )
         # The denominator should always be non-zero if all tracks are non-empty.
         with np.errstate(divide='raise', invalid='raise'):
             temporal_iou = potential_matches_count / union_count
@@ -99,8 +101,14 @@ class VACE(_BaseMetric):
         res = {}
         for field in self.fields:
             if ignore_empty_classes:
-                res[field] = np.mean([v[field] for v in all_res.values()
-                                  if v['VACE_GT_IDs'] > 0 or v['VACE_IDs'] > 0], axis=0)
+                res[field] = np.mean(
+                    [
+                        v[field]
+                        for v in all_res.values()
+                        if v['VACE_GT_IDs'] > 0 or v['VACE_IDs'] > 0
+                    ],
+                    axis=0,
+                )
             else:
                 res[field] = np.mean([v[field] for v in all_res.values()], axis=0)
         return res
@@ -125,7 +133,8 @@ class VACE(_BaseMetric):
     def _compute_final_fields(additive):
         final = {}
         with np.errstate(invalid='ignore'):  # Permit nan results.
-            final['ATA'] = (additive['STDA'] /
-                            (0.5 * (additive['VACE_IDs'] + additive['VACE_GT_IDs'])))
+            final['ATA'] = additive['STDA'] / (
+                0.5 * (additive['VACE_IDs'] + additive['VACE_GT_IDs'])
+            )
             final['SFDA'] = additive['FDA'] / additive['num_non_empty_timesteps']
         return final

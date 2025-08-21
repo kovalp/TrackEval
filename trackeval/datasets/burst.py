@@ -1,7 +1,11 @@
 import os
-from .burst_helpers.burst_base import BURSTBase
-from .burst_helpers.format_converter import GroundTruthBURSTFormatToTAOFormatConverter, PredictionBURSTFormatToTAOFormatConverter
+
 from .. import utils
+from .burst_helpers.burst_base import BURSTBase
+from .burst_helpers.format_converter import (
+    GroundTruthBURSTFormatToTAOFormatConverter,
+    PredictionBURSTFormatToTAOFormatConverter,
+)
 
 
 class BURST(BURSTBase):
@@ -14,10 +18,12 @@ class BURST(BURSTBase):
 
         # e.g. 'data/gt/tsunami/exemplar_guided/'
         tao_config['GT_FOLDER'] = os.path.join(
-            code_path, 'data/gt/burst/val/')  # Location of GT data
+            code_path, 'data/gt/burst/val/'
+        )  # Location of GT data
         # e.g. 'data/trackers/tsunami/exemplar_guided/mask_guided/validation/'
         tao_config['TRACKERS_FOLDER'] = os.path.join(
-            code_path, 'data/trackers/burst/class-guided/')  # Trackers location
+            code_path, 'data/trackers/burst/class-guided/'
+        )  # Trackers location
         # set to True or False
         tao_config['EXEMPLAR_GUIDED'] = False
         return tao_config
@@ -30,10 +36,13 @@ class BURST(BURSTBase):
 
     def _calculate_area_for_ann(self, ann):
         import pycocotools.mask as cocomask
-        return cocomask.area(ann["segmentation"])
+
+        return cocomask.area(ann['segmentation'])
 
     def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-        similarity_scores = self._calculate_mask_ious(gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False)
+        similarity_scores = self._calculate_mask_ious(
+            gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False
+        )
         return similarity_scores
 
     def _is_exemplar_guided(self):
@@ -45,5 +54,5 @@ class BURST(BURSTBase):
 
     def _postproc_prediction_data(self, data):
         return PredictionBURSTFormatToTAOFormatConverter(
-            self.gt_data, data,
-            exemplar_guided=self._is_exemplar_guided()).convert()
+            self.gt_data, data, exemplar_guided=self._is_exemplar_guided()
+        ).convert()

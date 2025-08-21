@@ -1,17 +1,19 @@
 """."""
 
-from typing import Dict, Sequence, Union
 import argparse
 
+from typing import Dict, Sequence, Union
 
-def modify_with_cmd_line(config: Dict[str, Union[str, int, float, bool]],
-                         args: Union[None, Sequence[str]]) -> None:
+
+def modify_with_cmd_line(
+    config: Dict[str, Union[str, int, float, bool]], args: Union[None, Sequence[str]]
+) -> None:
     parser = argparse.ArgumentParser()
     for setting in config.keys():
         if isinstance(config[setting], list) or config[setting] is None:
-            parser.add_argument("--" + setting, nargs='+')
+            parser.add_argument('--' + setting, nargs='+')
         else:
-            parser.add_argument("--" + setting)
+            parser.add_argument('--' + setting)
     namespace = parser.parse_args(args).__dict__
 
     for setting in namespace.keys():

@@ -1,11 +1,14 @@
 import csv
 import io
-import zipfile
 import os
 import traceback
-import numpy as np
-from copy import deepcopy
+import zipfile
+
 from abc import ABC, abstractmethod
+from copy import deepcopy
+
+import numpy as np
+
 from .. import _timing
 from ..utils import TrackEvalException
 
@@ -25,21 +28,17 @@ class _BaseDataset(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_default_dataset_config():
-        ...
+    def get_default_dataset_config(): ...
 
     @abstractmethod
-    def _load_raw_file(self, tracker, seq, is_gt):
-        ...
+    def _load_raw_file(self, tracker, seq, is_gt): ...
 
     @_timing.time
     @abstractmethod
-    def get_preprocessed_seq_data(self, raw_data, cls):
-        ...
+    def get_preprocessed_seq_data(self, raw_data, cls): ...
 
     @abstractmethod
-    def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-        ...
+    def _calculate_similarities(self, gt_dets_t, tracker_dets_t): ...
 
     # Helper functions for all datasets:
 
@@ -54,7 +53,7 @@ class _BaseDataset(ABC):
         return os.path.join(self.output_fol, tracker, self.output_sub_fol)
 
     def get_display_name(self, tracker):
-        """ Can be overwritten if the trackers name (in files) is different to how it should be displayed.
+        """Can be overwritten if the trackers name (in files) is different to how it should be displayed.
         By default this method just returns the trackers name as is.
         """
         return tracker
@@ -65,7 +64,7 @@ class _BaseDataset(ABC):
 
     @_timing.time
     def get_raw_seq_data(self, tracker, seq):
-        """ Loads raw data (tracker and ground-truth) for a single tracker on a single sequence.
+        """Loads raw data (tracker and ground-truth) for a single tracker on a single sequence.
         Raw data includes all of the information needed for both preprocessing and evaluation, for all classes.
         A later function (get_processed_seq_data) will perform such preprocessing and extract relevant information for
         the evaluation of each class.
@@ -95,17 +94,28 @@ class _BaseDataset(ABC):
 
         # Calculate similarities for each timestep.
         similarity_scores = []
-        for t, (gt_dets_t, tracker_dets_t) in enumerate(zip(raw_data['gt_dets'], raw_data['tracker_dets'])):
+        for t, (gt_dets_t, tracker_dets_t) in enumerate(
+            zip(raw_data['gt_dets'], raw_data['tracker_dets'])
+        ):
             ious = self._calculate_similarities(gt_dets_t, tracker_dets_t)
             similarity_scores.append(ious)
         raw_data['similarity_scores'] = similarity_scores
         return raw_data
 
     @staticmethod
-    def _load_simple_text_file(file, time_col=0, id_col=None, remove_negative_ids=False, valid_filter=None,
-                               crowd_ignore_filter=None, convert_filter=None, is_zipped=False, zip_file=None,
-                               force_delimiters=None):
-        """ Function that loads data which is in a commonly used text file format.
+    def _load_simple_text_file(
+        file,
+        time_col=0,
+        id_col=None,
+        remove_negative_ids=False,
+        valid_filter=None,
+        crowd_ignore_filter=None,
+        convert_filter=None,
+        is_zipped=False,
+        zip_file=None,
+        force_delimiters=None,
+    ):
+        """Function that loads data which is in a commonly used text file format.
         Assumes each det is given by one row of a text file.
         There is no limit to the number or meaning of each column,
         however one column needs to give the timestep of each det (time_col) which is default col 0.
@@ -156,7 +166,9 @@ class _BaseDataset(ABC):
             # check if file is empty
             if fp.tell():
                 fp.seek(0)
-                dialect = csv.Sniffer().sniff(fp.readline(), delimiters=force_delimiters)  # Auto determine structure.
+                dialect = csv.Sniffer().sniff(
+                    fp.readline(), delimiters=force_delimiters
+                )  # Auto determine structure.
                 dialect.skipinitialspace = True  # Deal with extra spaces between columns
                 fp.seek(0)
                 reader = csv.reader(fp, dialect)
@@ -198,22 +210,25 @@ class _BaseDataset(ABC):
                         else:
                             read_data[timestep] = [row]
                     except Exception:
-                        exc_str_init = 'In file %s the following line cannot be read correctly: \n' % os.path.basename(
-                            file)
-                        exc_str = ' '.join([exc_str_init]+row)
+                        exc_str_init = (
+                            'In file %s the following line cannot be read correctly: \n'
+                            % os.path.basename(file)
+                        )
+                        exc_str = ' '.join([exc_str_init] + row)
                         raise TrackEvalException(exc_str)
             fp.close()
         except Exception:
             print('Error loading file: %s, printing traceback.' % file)
             traceback.print_exc()
             raise TrackEvalException(
-                'File %s cannot be read because it is either not present or invalidly formatted' % os.path.basename(
-                    file))
+                'File %s cannot be read because it is either not present or invalidly formatted'
+                % os.path.basename(file)
+            )
         return read_data, crowd_ignore_data
 
     @staticmethod
     def _calculate_mask_ious(masks1, masks2, is_encoded=False, do_ioa=False):
-        """ Calculates the IOU (intersection over union) between two arrays of segmentation masks.
+        """Calculates the IOU (intersection over union) between two arrays of segmentation masks.
         If is_encoded a run length encoding with pycocotools is assumed as input format, otherwise an input of numpy
         arrays of the shape (num_masks, height, width) is assumed and the encoding is performed.
         If do_ioa (intersection over area) , then calculates the intersection over the area of masks1 - this is commonly
@@ -236,7 +251,7 @@ class _BaseDataset(ABC):
             masks2 = mask_utils.encode(np.array(np.transpose(masks2, (1, 2, 0)), order='F'))
 
         # use pycocotools for iou computation of rle encoded masks
-        ious = mask_utils.iou(masks1, masks2, [do_ioa]*len(masks2))
+        ious = mask_utils.iou(masks1, masks2, [do_ioa] * len(masks2))
         if len(masks1) == 0 or len(masks2) == 0:
             ious = np.asarray(ious).reshape(len(masks1), len(masks2))
         assert (ious >= 0 - np.finfo('float').eps).all()
@@ -246,7 +261,7 @@ class _BaseDataset(ABC):
 
     @staticmethod
     def _calculate_box_ious(bboxes1, bboxes2, box_format='xywh', do_ioa=False):
-        """ Calculates the IOU (intersection over union) between two arrays of boxes.
+        """Calculates the IOU (intersection over union) between two arrays of boxes.
         Allows variable box formats ('xywh' and 'x0y0x1y1').
         If do_ioa (intersection over area) , then calculates the intersection over the area of boxes1 - this is commonly
         used to determine if detections are within crowd ignore region.
@@ -266,7 +281,9 @@ class _BaseDataset(ABC):
         # layout: (x0, y0, x1, y1)
         min_ = np.minimum(bboxes1[:, np.newaxis, :], bboxes2[np.newaxis, :, :])
         max_ = np.maximum(bboxes1[:, np.newaxis, :], bboxes2[np.newaxis, :, :])
-        intersection = np.maximum(min_[..., 2] - max_[..., 0], 0) * np.maximum(min_[..., 3] - max_[..., 1], 0)
+        intersection = np.maximum(min_[..., 2] - max_[..., 0], 0) * np.maximum(
+            min_[..., 3] - max_[..., 1], 0
+        )
         area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
 
         if do_ioa:
@@ -287,13 +304,13 @@ class _BaseDataset(ABC):
 
     @staticmethod
     def _calculate_euclidean_similarity(dets1, dets2, zero_distance=2.0):
-        """ Calculates the euclidean distance between two sets of detections, and then converts this into a similarity
+        """Calculates the euclidean distance between two sets of detections, and then converts this into a similarity
         measure with values between 0 and 1 using the following formula: sim = max(0, 1 - dist/zero_distance).
         The default zero_distance of 2.0, corresponds to the default used in MOT15_3D, such that a 0.5 similarity
         threshold corresponds to a 1m distance threshold for TPs.
         """
-        dist = np.linalg.norm(dets1[:, np.newaxis]-dets2[np.newaxis, :], axis=2)
-        sim = np.maximum(0, 1 - dist/zero_distance)
+        dist = np.linalg.norm(dets1[:, np.newaxis] - dets2[np.newaxis, :], axis=2)
+        sim = np.maximum(0, 1 - dist / zero_distance)
         return sim
 
     @staticmethod
@@ -306,21 +323,29 @@ class _BaseDataset(ABC):
                 unique_ids, counts = np.unique(tracker_ids_t, return_counts=True)
                 if np.max(counts) != 1:
                     duplicate_ids = unique_ids[counts > 1]
-                    exc_str_init = 'Tracker predicts the same ID more than once in a single timestep ' \
-                                   '(seq: %s, frame: %i, ids:' % (data['seq'], t+1)
+                    exc_str_init = (
+                        'Tracker predicts the same ID more than once in a single timestep '
+                        '(seq: %s, frame: %i, ids:' % (data['seq'], t + 1)
+                    )
                     exc_str = ' '.join([exc_str_init] + [str(d) for d in duplicate_ids]) + ')'
                     if after_preproc:
-                        exc_str_init += '\n Note that this error occurred after preprocessing (but not before), ' \
-                                        'so ids may not be as in file, and something seems wrong with preproc.'
+                        exc_str_init += (
+                            '\n Note that this error occurred after preprocessing (but not before), '
+                            'so ids may not be as in file, and something seems wrong with preproc.'
+                        )
                     raise TrackEvalException(exc_str)
             if len(gt_ids_t) > 0:
                 unique_ids, counts = np.unique(gt_ids_t, return_counts=True)
                 if np.max(counts) != 1:
                     duplicate_ids = unique_ids[counts > 1]
-                    exc_str_init = 'Ground-truth has the same ID more than once in a single timestep ' \
-                                   '(seq: %s, frame: %i, ids:' % (data['seq'], t+1)
+                    exc_str_init = (
+                        'Ground-truth has the same ID more than once in a single timestep '
+                        '(seq: %s, frame: %i, ids:' % (data['seq'], t + 1)
+                    )
                     exc_str = ' '.join([exc_str_init] + [str(d) for d in duplicate_ids]) + ')'
                     if after_preproc:
-                        exc_str_init += '\n Note that this error occurred after preprocessing (but not before), ' \
-                                        'so ids may not be as in file, and something seems wrong with preproc.'
+                        exc_str_init += (
+                            '\n Note that this error occurred after preprocessing (but not before), '
+                            'so ids may not be as in file, and something seems wrong with preproc.'
+                        )
                     raise TrackEvalException(exc_str)

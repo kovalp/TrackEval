@@ -1,15 +1,18 @@
+import os
 import time
 import traceback
-from multiprocessing.pool import Pool
+
 from functools import partial
-import os
-from . import utils
-from .utils import TrackEvalException
-from . import _timing
+from multiprocessing.pool import Pool
+
+from . import _timing, utils
 from .metrics import Count
+from .utils import TrackEvalException
+
 
 try:
     import tqdm
+
     TQDM_IMPORTED = True
 except ImportError as _:
     TQDM_IMPORTED = False
@@ -27,14 +30,14 @@ class Evaluator:
             'NUM_PARALLEL_CORES': 8,
             'BREAK_ON_ERROR': True,  # Raises exception and exits with error
             'RETURN_ON_ERROR': False,  # if not BREAK_ON_ERROR, then returns from function on error
-            'LOG_ON_ERROR': os.path.join(code_path, 'error_log.txt'),  # if not None, save any errors into a log file.
-
+            'LOG_ON_ERROR': os.path.join(
+                code_path, 'error_log.txt'
+            ),  # if not None, save any errors into a log file.
             'PRINT_RESULTS': True,
             'PRINT_ONLY_COMBINED': False,
             'PRINT_CONFIG': True,
             'TIME_PROGRESS': True,
             'DISPLAY_LESS_PROGRESS': True,
-
             'OUTPUT_SUMMARY': True,
             'OUTPUT_EMPTY_CLASSES': True,  # If False, summary files are not output for classes with no detections
             'OUTPUT_DETAILED': True,
@@ -66,9 +69,17 @@ class Evaluator:
             output_res[dataset_name] = {}
             output_msg[dataset_name] = {}
             tracker_list, seq_list, class_list = dataset.get_eval_info()
-            print('\nEvaluating %i tracker(s) on %i sequence(s) for %i class(es) on %s dataset using the following '
-                  'metrics: %s\n' % (len(tracker_list), len(seq_list), len(class_list), dataset_name,
-                                     ', '.join(metric_names)))
+            print(
+                '\nEvaluating %i tracker(s) on %i sequence(s) for %i class(es) on %s dataset using the following '
+                'metrics: %s\n'
+                % (
+                    len(tracker_list),
+                    len(seq_list),
+                    len(class_list),
+                    dataset_name,
+                    ', '.join(metric_names),
+                )
+            )
 
             # Evaluate each tracker
             for tracker in tracker_list:
@@ -83,22 +94,34 @@ class Evaluator:
                         if show_progressbar and TQDM_IMPORTED:
                             seq_list_sorted = sorted(seq_list)
 
-                            with Pool(config['NUM_PARALLEL_CORES']) as pool, tqdm.tqdm(total=len(seq_list)) as pbar:
-                                _eval_sequence = partial(eval_sequence, dataset=dataset, tracker=tracker,
-                                                         class_list=class_list, metrics_list=metrics_list,
-                                                         metric_names=metric_names)
+                            with (
+                                Pool(config['NUM_PARALLEL_CORES']) as pool,
+                                tqdm.tqdm(total=len(seq_list)) as pbar,
+                            ):
+                                _eval_sequence = partial(
+                                    eval_sequence,
+                                    dataset=dataset,
+                                    tracker=tracker,
+                                    class_list=class_list,
+                                    metrics_list=metrics_list,
+                                    metric_names=metric_names,
+                                )
                                 results = []
-                                for r in pool.imap(_eval_sequence, seq_list_sorted,
-                                                   chunksize=20):
+                                for r in pool.imap(_eval_sequence, seq_list_sorted, chunksize=20):
                                     results.append(r)
                                     pbar.update()
                                 res = dict(zip(seq_list_sorted, results))
 
                         else:
                             with Pool(config['NUM_PARALLEL_CORES']) as pool:
-                                _eval_sequence = partial(eval_sequence, dataset=dataset, tracker=tracker,
-                                                         class_list=class_list, metrics_list=metrics_list,
-                                                         metric_names=metric_names)
+                                _eval_sequence = partial(
+                                    eval_sequence,
+                                    dataset=dataset,
+                                    tracker=tracker,
+                                    class_list=class_list,
+                                    metrics_list=metrics_list,
+                                    metric_names=metric_names,
+                                )
                                 results = pool.map(_eval_sequence, seq_list)
                                 res = dict(zip(seq_list, results))
                     else:
@@ -106,12 +129,24 @@ class Evaluator:
                         if show_progressbar and TQDM_IMPORTED:
                             seq_list_sorted = sorted(seq_list)
                             for curr_seq in tqdm.tqdm(seq_list_sorted):
-                                res[curr_seq] = eval_sequence(curr_seq, dataset, tracker, class_list, metrics_list,
-                                                              metric_names)
+                                res[curr_seq] = eval_sequence(
+                                    curr_seq,
+                                    dataset,
+                                    tracker,
+                                    class_list,
+                                    metrics_list,
+                                    metric_names,
+                                )
                         else:
                             for curr_seq in sorted(seq_list):
-                                res[curr_seq] = eval_sequence(curr_seq, dataset, tracker, class_list, metrics_list,
-                                                              metric_names)
+                                res[curr_seq] = eval_sequence(
+                                    curr_seq,
+                                    dataset,
+                                    tracker,
+                                    class_list,
+                                    metrics_list,
+                                    metric_names,
+                                )
 
                     # Combine results over all sequences and then over all classes
 
@@ -122,37 +157,57 @@ class Evaluator:
                     for c_cls in class_list:
                         res['COMBINED_SEQ'][c_cls] = {}
                         for metric, metric_name in zip(metrics_list, metric_names):
-                            curr_res = {seq_key: seq_value[c_cls][metric_name] for seq_key, seq_value in res.items() if
-                                        seq_key != 'COMBINED_SEQ'}
-                            res['COMBINED_SEQ'][c_cls][metric_name] = metric.combine_sequences(curr_res)
+                            curr_res = {
+                                seq_key: seq_value[c_cls][metric_name]
+                                for seq_key, seq_value in res.items()
+                                if seq_key != 'COMBINED_SEQ'
+                            }
+                            res['COMBINED_SEQ'][c_cls][metric_name] = metric.combine_sequences(
+                                curr_res
+                            )
                     # combine classes
                     if dataset.should_classes_combine:
                         combined_cls_keys += ['cls_comb_cls_av', 'cls_comb_det_av', 'all']
                         res['COMBINED_SEQ']['cls_comb_cls_av'] = {}
                         res['COMBINED_SEQ']['cls_comb_det_av'] = {}
                         for metric, metric_name in zip(metrics_list, metric_names):
-                            cls_res = {cls_key: cls_value[metric_name] for cls_key, cls_value in
-                                       res['COMBINED_SEQ'].items() if cls_key not in combined_cls_keys}
-                            res['COMBINED_SEQ']['cls_comb_cls_av'][metric_name] = \
+                            cls_res = {
+                                cls_key: cls_value[metric_name]
+                                for cls_key, cls_value in res['COMBINED_SEQ'].items()
+                                if cls_key not in combined_cls_keys
+                            }
+                            res['COMBINED_SEQ']['cls_comb_cls_av'][metric_name] = (
                                 metric.combine_classes_class_averaged(cls_res)
-                            res['COMBINED_SEQ']['cls_comb_det_av'][metric_name] = \
+                            )
+                            res['COMBINED_SEQ']['cls_comb_det_av'][metric_name] = (
                                 metric.combine_classes_det_averaged(cls_res)
+                            )
                     # combine classes to super classes
                     if dataset.use_super_categories:
                         for cat, sub_cats in dataset.super_categories.items():
                             combined_cls_keys.append(cat)
                             res['COMBINED_SEQ'][cat] = {}
                             for metric, metric_name in zip(metrics_list, metric_names):
-                                cat_res = {cls_key: cls_value[metric_name] for cls_key, cls_value in
-                                           res['COMBINED_SEQ'].items() if cls_key in sub_cats}
-                                res['COMBINED_SEQ'][cat][metric_name] = metric.combine_classes_det_averaged(cat_res)
+                                cat_res = {
+                                    cls_key: cls_value[metric_name]
+                                    for cls_key, cls_value in res['COMBINED_SEQ'].items()
+                                    if cls_key in sub_cats
+                                }
+                                res['COMBINED_SEQ'][cat][metric_name] = (
+                                    metric.combine_classes_det_averaged(cat_res)
+                                )
 
                     # Print and output results in various formats
                     if config['TIME_PROGRESS']:
-                        print('\nAll sequences for %s finished in %.2f seconds' % (tracker, time.time() - time_start))
+                        print(
+                            '\nAll sequences for %s finished in %.2f seconds'
+                            % (tracker, time.time() - time_start)
+                        )
                     output_fol = dataset.get_output_fol(tracker)
                     tracker_display_name = dataset.get_display_name(tracker)
-                    for c_cls in res['COMBINED_SEQ'].keys():  # class_list + combined classes if calculated
+                    for c_cls in res[
+                        'COMBINED_SEQ'
+                    ].keys():  # class_list + combined classes if calculated
                         summaries = []
                         details = []
                         num_dets = res['COMBINED_SEQ'][c_cls]['Count']['Dets']
@@ -160,16 +215,26 @@ class Evaluator:
                             for metric, metric_name in zip(metrics_list, metric_names):
                                 # for combined classes there is no per sequence evaluation
                                 if c_cls in combined_cls_keys:
-                                    table_res = {'COMBINED_SEQ': res['COMBINED_SEQ'][c_cls][metric_name]}
+                                    table_res = {
+                                        'COMBINED_SEQ': res['COMBINED_SEQ'][c_cls][metric_name]
+                                    }
                                 else:
-                                    table_res = {seq_key: seq_value[c_cls][metric_name] for seq_key, seq_value
-                                                 in res.items()}
+                                    table_res = {
+                                        seq_key: seq_value[c_cls][metric_name]
+                                        for seq_key, seq_value in res.items()
+                                    }
 
                                 if config['PRINT_RESULTS'] and config['PRINT_ONLY_COMBINED']:
-                                    dont_print = dataset.should_classes_combine and c_cls not in combined_cls_keys
+                                    dont_print = (
+                                        dataset.should_classes_combine
+                                        and c_cls not in combined_cls_keys
+                                    )
                                     if not dont_print:
-                                        metric.print_table({'COMBINED_SEQ': table_res['COMBINED_SEQ']},
-                                                           tracker_display_name, c_cls)
+                                        metric.print_table(
+                                            {'COMBINED_SEQ': table_res['COMBINED_SEQ']},
+                                            tracker_display_name,
+                                            c_cls,
+                                        )
                                 elif config['PRINT_RESULTS']:
                                     metric.print_table(table_res, tracker_display_name, c_cls)
                                 if config['OUTPUT_SUMMARY']:
@@ -177,8 +242,9 @@ class Evaluator:
                                 if config['OUTPUT_DETAILED']:
                                     details.append(metric.detailed_results(table_res))
                                 if config['PLOT_CURVES']:
-                                    metric.plot_single_tracker_results(table_res, tracker_display_name, c_cls,
-                                                                       output_fol)
+                                    metric.plot_single_tracker_results(
+                                        table_res, tracker_display_name, c_cls, output_fol
+                                    )
                             if config['OUTPUT_SUMMARY']:
                                 utils.write_summary_results(summaries, c_cls, output_fol)
                             if config['OUTPUT_DETAILED']:

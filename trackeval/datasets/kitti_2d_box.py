@@ -1,12 +1,13 @@
-
-import os
 import csv
+import os
+
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from ._base_dataset import _BaseDataset
-from .. import utils
+
+from .. import _timing, utils
 from ..utils import TrackEvalException
-from .. import _timing
+from ._base_dataset import _BaseDataset
 
 
 class Kitti2DBox(_BaseDataset):
@@ -17,8 +18,12 @@ class Kitti2DBox(_BaseDataset):
         """Default class config values"""
         code_path = utils.get_code_path()
         default_config = {
-            'GT_FOLDER': os.path.join(code_path, 'data/gt/kitti/kitti_2d_box_train'),  # Location of GT data
-            'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/kitti/kitti_2d_box_train/'),  # Trackers location
+            'GT_FOLDER': os.path.join(
+                code_path, 'data/gt/kitti/kitti_2d_box_train'
+            ),  # Location of GT data
+            'TRACKERS_FOLDER': os.path.join(
+                code_path, 'data/trackers/kitti/kitti_2d_box_train/'
+            ),  # Trackers location
             'OUTPUT_FOLDER': None,  # Where to save eval results (if None, same as TRACKERS_FOLDER)
             'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
             'CLASSES_TO_EVAL': ['car', 'pedestrian'],  # Valid: ['car', 'pedestrian']
@@ -55,12 +60,26 @@ class Kitti2DBox(_BaseDataset):
 
         # Get classes to eval
         self.valid_classes = ['car', 'pedestrian']
-        self.class_list = [cls.lower() if cls.lower() in self.valid_classes else None
-                           for cls in self.config['CLASSES_TO_EVAL']]
+        self.class_list = [
+            cls.lower() if cls.lower() in self.valid_classes else None
+            for cls in self.config['CLASSES_TO_EVAL']
+        ]
         if not all(self.class_list):
-            raise TrackEvalException('Attempted to evaluate an invalid class. Only classes [car, pedestrian] are valid.')
-        self.class_name_to_class_id = {'car': 1, 'van': 2, 'truck': 3, 'pedestrian': 4, 'person': 5,  # person sitting
-                                       'cyclist': 6, 'tram': 7, 'misc': 8, 'dontcare': 9, 'car_2': 1}
+            raise TrackEvalException(
+                'Attempted to evaluate an invalid class. Only classes [car, pedestrian] are valid.'
+            )
+        self.class_name_to_class_id = {
+            'car': 1,
+            'van': 2,
+            'truck': 3,
+            'pedestrian': 4,
+            'person': 5,  # person sitting
+            'cyclist': 6,
+            'tram': 7,
+            'misc': 8,
+            'dontcare': 9,
+            'car_2': 1,
+        }
 
         # Get sequences to eval and check gt files exist
         self.seq_list = []
@@ -81,7 +100,9 @@ class Kitti2DBox(_BaseDataset):
                     if not self.data_is_zipped:
                         curr_file = os.path.join(self.gt_fol, 'label_02', seq + '.txt')
                         if not os.path.isfile(curr_file):
-                            raise TrackEvalException('GT file not found: ' + os.path.basename(curr_file))
+                            raise TrackEvalException(
+                                'GT file not found: ' + os.path.basename(curr_file)
+                            )
             if self.data_is_zipped:
                 curr_file = os.path.join(self.gt_fol, 'data.zip')
                 if not os.path.isfile(curr_file):
@@ -96,23 +117,37 @@ class Kitti2DBox(_BaseDataset):
         if self.config['TRACKER_DISPLAY_NAMES'] is None:
             self.tracker_to_disp = dict(zip(self.tracker_list, self.tracker_list))
         elif (self.config['TRACKERS_TO_EVAL'] is not None) and (
-                len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)):
-            self.tracker_to_disp = dict(zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES']))
+            len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)
+        ):
+            self.tracker_to_disp = dict(
+                zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES'])
+            )
         else:
-            raise TrackEvalException('List of tracker files and tracker display names do not match.')
+            raise TrackEvalException(
+                'List of tracker files and tracker display names do not match.'
+            )
 
         for tracker in self.tracker_list:
             if self.data_is_zipped:
                 curr_file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol + '.zip')
                 if not os.path.isfile(curr_file):
-                    raise TrackEvalException('Tracker file not found: ' + tracker + '/' + os.path.basename(curr_file))
+                    raise TrackEvalException(
+                        'Tracker file not found: ' + tracker + '/' + os.path.basename(curr_file)
+                    )
             else:
                 for seq in self.seq_list:
-                    curr_file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, seq + '.txt')
+                    curr_file = os.path.join(
+                        self.tracker_fol, tracker, self.tracker_sub_fol, seq + '.txt'
+                    )
                     if not os.path.isfile(curr_file):
                         raise TrackEvalException(
-                            'Tracker file not found: ' + tracker + '/' + self.tracker_sub_fol + '/' + os.path.basename(
-                                curr_file))
+                            'Tracker file not found: '
+                            + tracker
+                            + '/'
+                            + self.tracker_sub_fol
+                            + '/'
+                            + os.path.basename(curr_file)
+                        )
 
     def get_display_name(self, tracker):
         return self.tracker_to_disp[tracker]
@@ -161,11 +196,17 @@ class Kitti2DBox(_BaseDataset):
         convert_filter = {2: self.class_name_to_class_id}
 
         # Load raw data from text file
-        read_data, ignore_data = self._load_simple_text_file(file, time_col=0, id_col=1, remove_negative_ids=True,
-                                                             valid_filter=valid_filter,
-                                                             crowd_ignore_filter=crowd_ignore_filter,
-                                                             convert_filter=convert_filter,
-                                                             is_zipped=self.data_is_zipped, zip_file=zip_file)
+        read_data, ignore_data = self._load_simple_text_file(
+            file,
+            time_col=0,
+            id_col=1,
+            remove_negative_ids=True,
+            valid_filter=valid_filter,
+            crowd_ignore_filter=crowd_ignore_filter,
+            convert_filter=convert_filter,
+            is_zipped=self.data_is_zipped,
+            zip_file=zip_file,
+        )
         # Convert data to required format
         num_timesteps = self.seq_lengths[seq]
         data_keys = ['ids', 'classes', 'dets']
@@ -184,8 +225,10 @@ class Kitti2DBox(_BaseDataset):
             else:
                 text = 'Tracking'
             raise TrackEvalException(
-                text + ' data contains the following invalid timesteps in seq %s: ' % seq + ', '.join(
-                    [str(x) + ', ' for x in extra_time_keys]))
+                text
+                + ' data contains the following invalid timesteps in seq %s: ' % seq
+                + ', '.join([str(x) + ', ' for x in extra_time_keys])
+            )
 
         for t in range(num_timesteps):
             time_key = str(t)
@@ -195,8 +238,10 @@ class Kitti2DBox(_BaseDataset):
                 raw_data['ids'][t] = np.atleast_1d(time_data[:, 1]).astype(int)
                 raw_data['classes'][t] = np.atleast_1d(time_data[:, 2]).astype(int)
                 if is_gt:
-                    gt_extras_dict = {'truncation': np.atleast_1d(time_data[:, 3].astype(int)),
-                                      'occlusion': np.atleast_1d(time_data[:, 4].astype(int))}
+                    gt_extras_dict = {
+                        'truncation': np.atleast_1d(time_data[:, 3].astype(int)),
+                        'occlusion': np.atleast_1d(time_data[:, 4].astype(int)),
+                    }
                     raw_data['gt_extras'][t] = gt_extras_dict
                 else:
                     if time_data.shape[1] > 17:
@@ -208,8 +253,7 @@ class Kitti2DBox(_BaseDataset):
                 raw_data['ids'][t] = np.empty(0).astype(int)
                 raw_data['classes'][t] = np.empty(0).astype(int)
                 if is_gt:
-                    gt_extras_dict = {'truncation': np.empty(0),
-                                      'occlusion': np.empty(0)}
+                    gt_extras_dict = {'truncation': np.empty(0), 'occlusion': np.empty(0)}
                     raw_data['gt_extras'][t] = gt_extras_dict
                 else:
                     raw_data['tracker_confidences'][t] = np.empty(0)
@@ -221,13 +265,9 @@ class Kitti2DBox(_BaseDataset):
                     raw_data['gt_crowd_ignore_regions'][t] = np.empty((0, 4))
 
         if is_gt:
-            key_map = {'ids': 'gt_ids',
-                       'classes': 'gt_classes',
-                       'dets': 'gt_dets'}
+            key_map = {'ids': 'gt_ids', 'classes': 'gt_classes', 'dets': 'gt_dets'}
         else:
-            key_map = {'ids': 'tracker_ids',
-                       'classes': 'tracker_classes',
-                       'dets': 'tracker_dets'}
+            key_map = {'ids': 'tracker_ids', 'classes': 'tracker_classes', 'dets': 'tracker_dets'}
         for k, v in key_map.items():
             raw_data[v] = raw_data.pop(k)
         raw_data['num_timesteps'] = num_timesteps
@@ -236,7 +276,7 @@ class Kitti2DBox(_BaseDataset):
 
     @_timing.time
     def get_preprocessed_seq_data(self, raw_data, cls):
-        """ Preprocess data for a single sequence for a single class ready for evaluation.
+        """Preprocess data for a single sequence for a single class ready for evaluation.
         Inputs:
              - raw_data is a dict containing the data for the sequence already read in by get_raw_seq_data().
              - cls is the class to be evaluated.
@@ -278,16 +318,24 @@ class Kitti2DBox(_BaseDataset):
             raise (TrackEvalException('Class %s is not evaluatable' % cls))
         cls_id = self.class_name_to_class_id[cls]
 
-        data_keys = ['gt_ids', 'tracker_ids', 'gt_dets', 'tracker_dets', 'tracker_confidences', 'similarity_scores']
+        data_keys = [
+            'gt_ids',
+            'tracker_ids',
+            'gt_dets',
+            'tracker_dets',
+            'tracker_confidences',
+            'similarity_scores',
+        ]
         data = {key: [None] * raw_data['num_timesteps'] for key in data_keys}
         unique_gt_ids = []
         unique_tracker_ids = []
         num_gt_dets = 0
         num_tracker_dets = 0
         for t in range(raw_data['num_timesteps']):
-
             # Only extract relevant dets for this class for preproc and eval (cls + distractor classes)
-            gt_class_mask = np.sum([raw_data['gt_classes'][t] == c for c in [cls_id] + distractor_classes], axis=0)
+            gt_class_mask = np.sum(
+                [raw_data['gt_classes'][t] == c for c in [cls_id] + distractor_classes], axis=0
+            )
             gt_class_mask = gt_class_mask.astype(bool)
             gt_ids = raw_data['gt_ids'][t][gt_class_mask]
             gt_dets = raw_data['gt_dets'][t][gt_class_mask]
@@ -300,7 +348,9 @@ class Kitti2DBox(_BaseDataset):
             tracker_ids = raw_data['tracker_ids'][t][tracker_class_mask]
             tracker_dets = raw_data['tracker_dets'][t][tracker_class_mask]
             tracker_confidences = raw_data['tracker_confidences'][t][tracker_class_mask]
-            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][:, tracker_class_mask]
+            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][
+                :, tracker_class_mask
+            ]
 
             # Match tracker and gt dets (with hungarian algorithm) and remove tracker dets which match with gt dets
             # which are labeled as truncated, occluded, or belonging to a distractor class.
@@ -310,14 +360,17 @@ class Kitti2DBox(_BaseDataset):
                 matching_scores = similarity_scores.copy()
                 matching_scores[matching_scores < 0.5 - np.finfo('float').eps] = 0
                 match_rows, match_cols = linear_sum_assignment(-matching_scores)
-                actually_matched_mask = matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                actually_matched_mask = (
+                    matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                )
                 match_rows = match_rows[actually_matched_mask]
                 match_cols = match_cols[actually_matched_mask]
 
                 is_distractor_class = np.isin(gt_classes[match_rows], distractor_classes)
                 is_occluded_or_truncated = np.logical_or(
                     gt_occlusion[match_rows] > self.max_occlusion + np.finfo('float').eps,
-                    gt_truncation[match_rows] > self.max_truncation + np.finfo('float').eps)
+                    gt_truncation[match_rows] > self.max_truncation + np.finfo('float').eps,
+                )
                 to_remove_matched = np.logical_or(is_distractor_class, is_occluded_or_truncated)
                 to_remove_matched = match_cols[to_remove_matched]
                 unmatched_indices = np.delete(unmatched_indices, match_cols, axis=0)
@@ -329,23 +382,32 @@ class Kitti2DBox(_BaseDataset):
 
             # For unmatched tracker dets, also remove those that are greater than 50% within a crowd ignore region.
             crowd_ignore_regions = raw_data['gt_crowd_ignore_regions'][t]
-            intersection_with_ignore_region = self._calculate_box_ious(unmatched_tracker_dets, crowd_ignore_regions,
-                                                                       box_format='x0y0x1y1', do_ioa=True)
-            is_within_crowd_ignore_region = np.any(intersection_with_ignore_region > 0.5 + np.finfo('float').eps, axis=1)
+            intersection_with_ignore_region = self._calculate_box_ious(
+                unmatched_tracker_dets, crowd_ignore_regions, box_format='x0y0x1y1', do_ioa=True
+            )
+            is_within_crowd_ignore_region = np.any(
+                intersection_with_ignore_region > 0.5 + np.finfo('float').eps, axis=1
+            )
 
             # Apply preprocessing to remove all unwanted tracker dets.
-            to_remove_unmatched = unmatched_indices[np.logical_or(is_too_small, is_within_crowd_ignore_region)]
+            to_remove_unmatched = unmatched_indices[
+                np.logical_or(is_too_small, is_within_crowd_ignore_region)
+            ]
             to_remove_tracker = np.concatenate((to_remove_matched, to_remove_unmatched), axis=0)
             data['tracker_ids'][t] = np.delete(tracker_ids, to_remove_tracker, axis=0)
             data['tracker_dets'][t] = np.delete(tracker_dets, to_remove_tracker, axis=0)
-            data['tracker_confidences'][t] = np.delete(tracker_confidences, to_remove_tracker, axis=0)
+            data['tracker_confidences'][t] = np.delete(
+                tracker_confidences, to_remove_tracker, axis=0
+            )
             similarity_scores = np.delete(similarity_scores, to_remove_tracker, axis=1)
 
             # Also remove gt dets that were only useful for preprocessing and are not needed for evaluation.
             # These are those that are occluded, truncated and from distractor objects.
-            gt_to_keep_mask = (np.less_equal(gt_occlusion, self.max_occlusion)) & \
-                              (np.less_equal(gt_truncation, self.max_truncation)) & \
-                              (np.equal(gt_classes, cls_id))
+            gt_to_keep_mask = (
+                (np.less_equal(gt_occlusion, self.max_occlusion))
+                & (np.less_equal(gt_truncation, self.max_truncation))
+                & (np.equal(gt_classes, cls_id))
+            )
             data['gt_ids'][t] = gt_ids[gt_to_keep_mask]
             data['gt_dets'][t] = gt_dets[gt_to_keep_mask, :]
             data['similarity_scores'][t] = similarity_scores[gt_to_keep_mask]
@@ -385,5 +447,7 @@ class Kitti2DBox(_BaseDataset):
         return data
 
     def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-        similarity_scores = self._calculate_box_ious(gt_dets_t, tracker_dets_t, box_format='x0y0x1y1')
+        similarity_scores = self._calculate_box_ious(
+            gt_dets_t, tracker_dets_t, box_format='x0y0x1y1'
+        )
         return similarity_scores

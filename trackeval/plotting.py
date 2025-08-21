@@ -1,6 +1,7 @@
-
 import os
+
 import numpy as np
+
 from .utils import TrackEvalException
 
 
@@ -27,7 +28,6 @@ def get_default_plots_list():
         ['DetPr', 'DetRe', 'HOTA', 'DetA', 'jaccard'],
         ['HOTA(0)', 'LocA(0)', 'HOTA', 'HOTALocA(0)', 'multiplication'],
         ['HOTA', 'LocA', 'HOTA', None, None],
-
         ['HOTA', 'MOTA', 'HOTA', None, None],
         ['HOTA', 'IDF1', 'HOTA', None, None],
         ['IDF1', 'MOTA', 'HOTA', None, None],
@@ -50,8 +50,10 @@ def load_multiple_tracker_summaries(tracker_folder, tracker_list, cls):
     return data
 
 
-def create_comparison_plot(data, out_loc, y_label, x_label, sort_label, bg_label=None, bg_function=None, settings=None):
-    """ Creates a scatter plot comparing multiple trackers between two metric fields, with one on the x-axis and the
+def create_comparison_plot(
+    data, out_loc, y_label, x_label, sort_label, bg_label=None, bg_function=None, settings=None
+):
+    """Creates a scatter plot comparing multiple trackers between two metric fields, with one on the x-axis and the
     other on the y axis. Adds pareto optical lines and (optionally) a background contour.
 
     Inputs:
@@ -78,7 +80,9 @@ def create_comparison_plot(data, out_loc, y_label, x_label, sort_label, bg_label
         num_to_plot = settings['num_to_plot']
 
     if (bg_label is None) != (bg_function is None):
-        raise TrackEvalException('bg_function and bg_label must either be both given or neither given.')
+        raise TrackEvalException(
+            'bg_function and bg_label must either be both given or neither given.'
+        )
 
     # Extract data
     tracker_names = np.array(list(data.keys()))
@@ -90,10 +94,10 @@ def create_comparison_plot(data, out_loc, y_label, x_label, sort_label, bg_label
     tracker_names = tracker_names[sort_index][:num_to_plot]
     print('\nPlotting %s vs %s, for the following (ordered) trackers:' % (y_label, x_label))
     for i, name in enumerate(tracker_names):
-        print('%i: %s' % (i+1, name))
+        print('%i: %s' % (i + 1, name))
 
     # Find best fitting boundaries for data
-    boundaries = _get_boundaries(x_values, y_values, round_val=gap_val/2)
+    boundaries = _get_boundaries(x_values, y_values, round_val=gap_val / 2)
 
     fig = plt.figure()
 
@@ -107,15 +111,31 @@ def create_comparison_plot(data, out_loc, y_label, x_label, sort_label, bg_label
     # Plot data points with number labels
     labels = np.arange(len(y_values)) + 1
     plt.plot(x_values, y_values, 'b.', markersize=15)
-    for xx, yy, l in zip(x_values, y_values, labels):
-        plt.text(xx, yy, str(l), color="red", fontsize=15)
+    for xx, yy, label in zip(x_values, y_values, labels):
+        plt.text(xx, yy, str(label), color='red', fontsize=15)
 
     # Add extra explanatory text to plots
-    plt.text(0, -0.11, 'label order:\nHOTA', horizontalalignment='left', verticalalignment='center',
-             transform=fig.axes[0].transAxes, color="red", fontsize=12)
+    plt.text(
+        0,
+        -0.11,
+        'label order:\nHOTA',
+        horizontalalignment='left',
+        verticalalignment='center',
+        transform=fig.axes[0].transAxes,
+        color='red',
+        fontsize=12,
+    )
     if bg_label is not None:
-        plt.text(1, -0.11, 'curve values:\n' + bg_label, horizontalalignment='right', verticalalignment='center',
-                 transform=fig.axes[0].transAxes, color="grey", fontsize=12)
+        plt.text(
+            1,
+            -0.11,
+            'curve values:\n' + bg_label,
+            horizontalalignment='right',
+            verticalalignment='center',
+            transform=fig.axes[0].transAxes,
+            color='grey',
+            fontsize=12,
+        )
 
     plt.xlabel(x_label, fontsize=15)
     plt.ylabel(y_label, fontsize=15)
@@ -169,14 +189,14 @@ def multiplication(x, y):
 
 
 bg_function_dict = {
-    "geometric_mean": geometric_mean,
-    "jaccard": jaccard,
-    "multiplication": multiplication,
-    }
+    'geometric_mean': geometric_mean,
+    'jaccard': jaccard,
+    'multiplication': multiplication,
+}
 
 
 def _plot_bg_contour(bg_function, plot_boundaries, gap_val):
-    """ Plot background contour. """
+    """Plot background contour."""
 
     # Only loaded when run to reduce minimum requirements
     from matplotlib import pyplot as plt
@@ -202,7 +222,7 @@ def _plot_bg_contour(bg_function, plot_boundaries, gap_val):
 
 
 def _plot_pareto_optimal_lines(x_values, y_values):
-    """ Plot pareto optimal lines """
+    """Plot pareto optimal lines"""
 
     # Only loaded when run to reduce minimum requirements
     from matplotlib import pyplot as plt

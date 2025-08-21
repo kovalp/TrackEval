@@ -1,24 +1,26 @@
-
-import os
 import csv
+import os
+
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from ._base_dataset import _BaseDataset
-from .. import utils
-from ..utils import TrackEvalException
-from .. import _timing
+
+from .. import _timing, utils
 from ..datasets.rob_mots_classmap import cls_id_to_name
+from ..utils import TrackEvalException
+from ._base_dataset import _BaseDataset
 
 
 class RobMOTS(_BaseDataset):
-
     @staticmethod
     def get_default_dataset_config():
         """Default class config values"""
         code_path = utils.get_code_path()
         default_config = {
             'GT_FOLDER': os.path.join(code_path, 'data/gt/rob_mots'),  # Location of GT data
-            'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/rob_mots'),  # Trackers location
+            'TRACKERS_FOLDER': os.path.join(
+                code_path, 'data/trackers/rob_mots'
+            ),  # Trackers location
             'OUTPUT_FOLDER': None,  # Where to save eval results (if None, same as TRACKERS_FOLDER)
             'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
             'SUB_BENCHMARK': None,  # REQUIRED. Sub-benchmark to eval. If None, then error.
@@ -43,19 +45,38 @@ class RobMOTS(_BaseDataset):
         self.config = utils.init_config(config, self.get_default_dataset_config())
 
         self.split = self.config['SPLIT_TO_EVAL']
-        valid_benchmarks = ['mots_challenge', 'kitti_mots', 'bdd_mots', 'davis_unsupervised', 'youtube_vis', 'ovis', 'waymo', 'tao']
+        valid_benchmarks = [
+            'mots_challenge',
+            'kitti_mots',
+            'bdd_mots',
+            'davis_unsupervised',
+            'youtube_vis',
+            'ovis',
+            'waymo',
+            'tao',
+        ]
         self.box_gt_benchmarks = ['waymo', 'tao']
 
         self.sub_benchmark = self.config['SUB_BENCHMARK']
         if not self.sub_benchmark:
-            raise TrackEvalException('SUB_BENCHMARK config input is required (there is no default value)' +
-                                     ', '.join(valid_benchmarks) + ' are valid.')
+            raise TrackEvalException(
+                'SUB_BENCHMARK config input is required (there is no default value)'
+                + ', '.join(valid_benchmarks)
+                + ' are valid.'
+            )
         if self.sub_benchmark not in valid_benchmarks:
-            raise TrackEvalException('Attempted to evaluate an invalid benchmark: ' + self.sub_benchmark + '. Only benchmarks ' +
-                                     ', '.join(valid_benchmarks) + ' are valid.')
+            raise TrackEvalException(
+                'Attempted to evaluate an invalid benchmark: '
+                + self.sub_benchmark
+                + '. Only benchmarks '
+                + ', '.join(valid_benchmarks)
+                + ' are valid.'
+            )
 
         self.gt_fol = self.config['GT_FOLDER']
-        self.tracker_fol = os.path.join(self.config['TRACKERS_FOLDER'], self.config['SPLIT_TO_EVAL'])
+        self.tracker_fol = os.path.join(
+            self.config['TRACKERS_FOLDER'], self.config['SPLIT_TO_EVAL']
+        )
         self.data_is_zipped = self.config['INPUT_AS_ZIP']
 
         self.output_fol = self.config['OUTPUT_FOLDER']
@@ -71,25 +92,34 @@ class RobMOTS(_BaseDataset):
         if len(self.seq_list) < 1:
             raise TrackEvalException('No sequences are selected to be evaluated.')
 
-        valid_class_ids = np.atleast_1d(np.genfromtxt(os.path.join(self.gt_fol, self.split, self.sub_benchmark,
-                                                                   'clsmap.txt')))
+        valid_class_ids = np.atleast_1d(
+            np.genfromtxt(os.path.join(self.gt_fol, self.split, self.sub_benchmark, 'clsmap.txt'))
+        )
         valid_classes = [cls_id_to_name[int(x)] for x in valid_class_ids] + ['all']
         self.valid_class_ids = valid_class_ids
-        self.class_name_to_class_id = {cls_name: cls_id for cls_id, cls_name in cls_id_to_name.items()}
+        self.class_name_to_class_id = {
+            cls_name: cls_id for cls_id, cls_name in cls_id_to_name.items()
+        }
         self.class_name_to_class_id['all'] = -1
         if not self.config['CLASSES_TO_EVAL']:
             self.class_list = valid_classes
         else:
-            self.class_list = [cls if cls in valid_classes else None
-                               for cls in self.config['CLASSES_TO_EVAL']]
+            self.class_list = [
+                cls if cls in valid_classes else None for cls in self.config['CLASSES_TO_EVAL']
+            ]
             if not all(self.class_list):
-                raise TrackEvalException('Attempted to evaluate an invalid class. Only classes ' +
-                                         ', '.join(valid_classes) + ' are valid.')
+                raise TrackEvalException(
+                    'Attempted to evaluate an invalid class. Only classes '
+                    + ', '.join(valid_classes)
+                    + ' are valid.'
+                )
 
         # Check gt files exist
         for seq in self.seq_list:
             if not self.data_is_zipped:
-                curr_file = os.path.join(self.gt_fol, self.split, self.sub_benchmark, 'data', seq + '.txt')
+                curr_file = os.path.join(
+                    self.gt_fol, self.split, self.sub_benchmark, 'data', seq + '.txt'
+                )
                 if not os.path.isfile(curr_file):
                     print('GT file not found ' + curr_file)
                     raise TrackEvalException('GT file not found for sequence: ' + seq)
@@ -107,24 +137,40 @@ class RobMOTS(_BaseDataset):
         if self.config['TRACKER_DISPLAY_NAMES'] is None:
             self.tracker_to_disp = dict(zip(self.tracker_list, self.tracker_list))
         elif (self.config['TRACKERS_TO_EVAL'] is not None) and (
-                len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)):
-            self.tracker_to_disp = dict(zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES']))
+            len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)
+        ):
+            self.tracker_to_disp = dict(
+                zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES'])
+            )
         else:
-            raise TrackEvalException('List of tracker files and tracker display names do not match.')
+            raise TrackEvalException(
+                'List of tracker files and tracker display names do not match.'
+            )
 
         for tracker in self.tracker_list:
             if self.data_is_zipped:
                 curr_file = os.path.join(self.tracker_fol, tracker, 'data.zip')
                 if not os.path.isfile(curr_file):
-                    raise TrackEvalException('Tracker file not found: ' + os.path.basename(curr_file))
+                    raise TrackEvalException(
+                        'Tracker file not found: ' + os.path.basename(curr_file)
+                    )
             else:
                 for seq in self.seq_list:
-                    curr_file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, self.sub_benchmark, seq
-                                             + '.txt')
+                    curr_file = os.path.join(
+                        self.tracker_fol,
+                        tracker,
+                        self.tracker_sub_fol,
+                        self.sub_benchmark,
+                        seq + '.txt',
+                    )
                     if not os.path.isfile(curr_file):
                         print('Tracker file not found: ' + curr_file)
                         raise TrackEvalException(
-                            'Tracker file not found: ' + self.sub_benchmark + '/' + os.path.basename(curr_file))
+                            'Tracker file not found: '
+                            + self.sub_benchmark
+                            + '/'
+                            + os.path.basename(curr_file)
+                        )
 
     def get_name(self):
         return self.get_class_name() + '.' + self.sub_benchmark
@@ -134,13 +180,15 @@ class RobMOTS(_BaseDataset):
         self.seq_lengths = {}
         self.seq_sizes = {}
         self.seq_ignore_class_ids = {}
-        if self.config["SEQMAP_FILE"]:
-            seqmap_file = self.config["SEQMAP_FILE"]
+        if self.config['SEQMAP_FILE']:
+            seqmap_file = self.config['SEQMAP_FILE']
         else:
-            if self.config["SEQMAP_FOLDER"] is None:
-                seqmap_file = os.path.join(self.gt_fol, self.split, self.sub_benchmark, 'seqmap.txt')
+            if self.config['SEQMAP_FOLDER'] is None:
+                seqmap_file = os.path.join(
+                    self.gt_fol, self.split, self.sub_benchmark, 'seqmap.txt'
+                )
             else:
-                seqmap_file = os.path.join(self.config["SEQMAP_FOLDER"], self.split + '.seqmap')
+                seqmap_file = os.path.join(self.config['SEQMAP_FOLDER'], self.split + '.seqmap')
         if not os.path.isfile(seqmap_file):
             print('no seqmap found: ' + seqmap_file)
             raise TrackEvalException('no seqmap found: ' + os.path.basename(seqmap_file))
@@ -186,13 +234,22 @@ class RobMOTS(_BaseDataset):
         else:
             zip_file = None
             if is_gt:
-                file = os.path.join(self.gt_fol, self.split, self.sub_benchmark, 'data', seq + '.txt')
+                file = os.path.join(
+                    self.gt_fol, self.split, self.sub_benchmark, 'data', seq + '.txt'
+                )
             else:
-                file = os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, self.sub_benchmark, seq + '.txt')
+                file = os.path.join(
+                    self.tracker_fol,
+                    tracker,
+                    self.tracker_sub_fol,
+                    self.sub_benchmark,
+                    seq + '.txt',
+                )
 
         # Load raw data from text file
-        read_data, ignore_data = self._load_simple_text_file(file, is_zipped=self.data_is_zipped, zip_file=zip_file,
-                                                             force_delimiters=' ')
+        read_data, ignore_data = self._load_simple_text_file(
+            file, is_zipped=self.data_is_zipped, zip_file=zip_file, force_delimiters=' '
+        )
 
         # Convert data to required format
         num_timesteps = self.seq_lengths[seq]
@@ -206,20 +263,34 @@ class RobMOTS(_BaseDataset):
             all_valid_masks = []
             if time_key in read_data.keys():
                 try:
-                    raw_data['ids'][t] = np.atleast_1d([det[1] for det in read_data[time_key]]).astype(int)
-                    raw_data['classes'][t] = np.atleast_1d([det[2] for det in read_data[time_key]]).astype(int)
+                    raw_data['ids'][t] = np.atleast_1d(
+                        [det[1] for det in read_data[time_key]]
+                    ).astype(int)
+                    raw_data['classes'][t] = np.atleast_1d(
+                        [det[2] for det in read_data[time_key]]
+                    ).astype(int)
                     if (not is_gt) or (self.sub_benchmark not in self.box_gt_benchmarks):
-                        raw_data['dets'][t] = [{'size': [int(region[4]), int(region[5])],
-                                                'counts': region[6].encode(encoding='UTF-8')}
-                                               for region in read_data[time_key]]
-                        all_valid_masks += [mask for mask, cls in zip(raw_data['dets'][t], raw_data['classes'][t]) if
-                                      cls < 100]
+                        raw_data['dets'][t] = [
+                            {
+                                'size': [int(region[4]), int(region[5])],
+                                'counts': region[6].encode(encoding='UTF-8'),
+                            }
+                            for region in read_data[time_key]
+                        ]
+                        all_valid_masks += [
+                            mask
+                            for mask, cls in zip(raw_data['dets'][t], raw_data['classes'][t])
+                            if cls < 100
+                        ]
                     else:
-                        raw_data['dets'][t] = np.atleast_2d([det[4:8] for det in read_data[time_key]]).astype(float)
+                        raw_data['dets'][t] = np.atleast_2d(
+                            [det[4:8] for det in read_data[time_key]]
+                        ).astype(float)
 
                     if not is_gt:
-                        raw_data['tracker_confidences'][t] = np.atleast_1d([det[3] for det
-                                                                            in read_data[time_key]]).astype(float)
+                        raw_data['tracker_confidences'][t] = np.atleast_1d(
+                            [det[3] for det in read_data[time_key]]
+                        ).astype(float)
                 except IndexError:
                     self._raise_index_error(is_gt, self.sub_benchmark, seq)
                 except ValueError:
@@ -239,19 +310,18 @@ class RobMOTS(_BaseDataset):
             if all_valid_masks:
                 masks_merged = all_valid_masks[0]
                 for mask in all_valid_masks[1:]:
-                    if mask_utils.area(mask_utils.merge([masks_merged, mask], intersect=True)) != 0.0:
+                    if (
+                        mask_utils.area(mask_utils.merge([masks_merged, mask], intersect=True))
+                        != 0.0
+                    ):
                         err = 'Overlapping masks in frame %d' % t
                         raise TrackEvalException(err)
                     masks_merged = mask_utils.merge([masks_merged, mask], intersect=False)
 
         if is_gt:
-            key_map = {'ids': 'gt_ids',
-                       'classes': 'gt_classes',
-                       'dets': 'gt_dets'}
+            key_map = {'ids': 'gt_ids', 'classes': 'gt_classes', 'dets': 'gt_dets'}
         else:
-            key_map = {'ids': 'tracker_ids',
-                       'classes': 'tracker_classes',
-                       'dets': 'tracker_dets'}
+            key_map = {'ids': 'tracker_ids', 'classes': 'tracker_classes', 'dets': 'tracker_dets'}
 
         for k, v in key_map.items():
             raw_data[v] = raw_data.pop(k)
@@ -271,12 +341,16 @@ class RobMOTS(_BaseDataset):
         :return: None
         """
         if is_gt:
-            err = 'Cannot load gt data from sequence %s, because there are not enough ' \
-                  'columns in the data.' % seq
+            err = (
+                'Cannot load gt data from sequence %s, because there are not enough '
+                'columns in the data.' % seq
+            )
             raise TrackEvalException(err)
         else:
-            err = 'Cannot load tracker data from benchmark %s, sequence %s, because there are not enough ' \
-                  'columns in the data.' % (sub_benchmark, seq)
+            err = (
+                'Cannot load tracker data from benchmark %s, sequence %s, because there are not enough '
+                'columns in the data.' % (sub_benchmark, seq)
+            )
             raise TrackEvalException(err)
 
     @staticmethod
@@ -290,15 +364,18 @@ class RobMOTS(_BaseDataset):
         """
         if is_gt:
             raise TrackEvalException(
-                'GT data for sequence %s cannot be converted to the right format. Is data corrupted?' % seq)
+                'GT data for sequence %s cannot be converted to the right format. Is data corrupted?'
+                % seq
+            )
         else:
             raise TrackEvalException(
                 'Tracking data from benchmark %s, sequence %s cannot be converted to the right format. '
-                'Is data corrupted?' % (sub_benchmark, seq))
+                'Is data corrupted?' % (sub_benchmark, seq)
+            )
 
     @_timing.time
     def get_preprocessed_seq_data(self, raw_data, cls):
-        """ Preprocess data for a single sequence for a single class ready for evaluation.
+        """Preprocess data for a single sequence for a single class ready for evaluation.
         Inputs:
              - raw_data is a dict containing the data for the sequence already read in by get_raw_seq_data().
              - cls is the class to be evaluated.
@@ -329,10 +406,17 @@ class RobMOTS(_BaseDataset):
         self._check_unique_ids(raw_data)
 
         cls_id = self.class_name_to_class_id[cls]
-        ignore_class_id = cls_id+100
+        ignore_class_id = cls_id + 100
         seq = raw_data['seq']
 
-        data_keys = ['gt_ids', 'tracker_ids', 'gt_dets', 'tracker_dets', 'tracker_confidences', 'similarity_scores']
+        data_keys = [
+            'gt_ids',
+            'tracker_ids',
+            'gt_dets',
+            'tracker_dets',
+            'tracker_confidences',
+            'similarity_scores',
+        ]
         data = {key: [None] * raw_data['num_timesteps'] for key in data_keys}
         unique_gt_ids = []
         unique_tracker_ids = []
@@ -340,7 +424,6 @@ class RobMOTS(_BaseDataset):
         num_tracker_dets = 0
 
         for t in range(raw_data['num_timesteps']):
-
             # Only extract relevant dets for this class
             if cls == 'all':
                 gt_class_mask = raw_data['gt_classes'][t] < 100
@@ -357,20 +440,31 @@ class RobMOTS(_BaseDataset):
                 ignore_regions_mask = raw_data['gt_classes'][t] >= 100
             else:
                 ignore_regions_mask = raw_data['gt_classes'][t] == ignore_class_id
-                ignore_regions_mask = np.logical_or(ignore_regions_mask, raw_data['gt_classes'][t] == 100)
+                ignore_regions_mask = np.logical_or(
+                    ignore_regions_mask, raw_data['gt_classes'][t] == 100
+                )
             if self.sub_benchmark in self.box_gt_benchmarks:
                 gt_dets = raw_data['gt_dets'][t][gt_class_mask]
                 ignore_regions_box = raw_data['gt_dets'][t][ignore_regions_mask]
                 if len(ignore_regions_box) > 0:
                     ignore_regions_box[:, 2] = ignore_regions_box[:, 2] - ignore_regions_box[:, 0]
                     ignore_regions_box[:, 3] = ignore_regions_box[:, 3] - ignore_regions_box[:, 1]
-                    ignore_regions = mask_utils.frPyObjects(ignore_regions_box, self.seq_sizes[seq][0], self.seq_sizes[seq][1])
+                    ignore_regions = mask_utils.frPyObjects(
+                        ignore_regions_box, self.seq_sizes[seq][0], self.seq_sizes[seq][1]
+                    )
                 else:
                     ignore_regions = []
             else:
-                gt_dets = [raw_data['gt_dets'][t][ind] for ind in range(len(gt_class_mask)) if gt_class_mask[ind]]
-                ignore_regions = [raw_data['gt_dets'][t][ind] for ind in range(len(ignore_regions_mask)) if
-                                  ignore_regions_mask[ind]]
+                gt_dets = [
+                    raw_data['gt_dets'][t][ind]
+                    for ind in range(len(gt_class_mask))
+                    if gt_class_mask[ind]
+                ]
+                ignore_regions = [
+                    raw_data['gt_dets'][t][ind]
+                    for ind in range(len(ignore_regions_mask))
+                    if ignore_regions_mask[ind]
+                ]
 
             if cls == 'all':
                 tracker_class_mask = np.ones_like(raw_data['tracker_classes'][t])
@@ -378,22 +472,28 @@ class RobMOTS(_BaseDataset):
                 tracker_class_mask = np.atleast_1d(raw_data['tracker_classes'][t] == cls_id)
             tracker_class_mask = tracker_class_mask.astype(bool)
             tracker_ids = raw_data['tracker_ids'][t][tracker_class_mask]
-            tracker_dets = [raw_data['tracker_dets'][t][ind] for ind in range(len(tracker_class_mask)) if
-                            tracker_class_mask[ind]]
+            tracker_dets = [
+                raw_data['tracker_dets'][t][ind]
+                for ind in range(len(tracker_class_mask))
+                if tracker_class_mask[ind]
+            ]
             tracker_confidences = raw_data['tracker_confidences'][t][tracker_class_mask]
-            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][:, tracker_class_mask]
+            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][
+                :, tracker_class_mask
+            ]
             tracker_classes = raw_data['tracker_classes'][t][tracker_class_mask]
 
             # Only do preproc if there are ignore regions defined to remove
             if tracker_ids.shape[0] > 0:
-
                 # Match tracker and gt dets (with hungarian algorithm)
                 unmatched_indices = np.arange(tracker_ids.shape[0])
                 if gt_ids.shape[0] > 0 and tracker_ids.shape[0] > 0:
                     matching_scores = similarity_scores.copy()
                     matching_scores[matching_scores < 0.5 - np.finfo('float').eps] = 0
                     match_rows, match_cols = linear_sum_assignment(-matching_scores)
-                    actually_matched_mask = matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                    actually_matched_mask = (
+                        matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                    )
                     # match_rows = match_rows[actually_matched_mask]
                     match_cols = match_cols[actually_matched_mask]
                     unmatched_indices = np.delete(unmatched_indices, match_cols, axis=0)
@@ -405,42 +505,61 @@ class RobMOTS(_BaseDataset):
                 #     _calculate_box_ious(unmatched_tracker_dets, crowd_ignore_regions, box_format='x0y0x1y1',
                 #                         do_ioa=True)
 
-
                 if cls_id in self.seq_ignore_class_ids[seq]:
                     # Remove unmatched detections for classes that are marked as 'ignore' for the whole sequence.
                     to_remove_tracker = unmatched_indices
                 else:
-                    unmatched_tracker_dets = [tracker_dets[i] for i in range(len(tracker_dets)) if
-                                              i in unmatched_indices]
+                    unmatched_tracker_dets = [
+                        tracker_dets[i] for i in range(len(tracker_dets)) if i in unmatched_indices
+                    ]
 
                     # For unmatched tracker dets remove those that are too small.
                     tracker_boxes_t = mask_utils.toBbox(unmatched_tracker_dets)
                     unmatched_widths = tracker_boxes_t[:, 2]
                     unmatched_heights = tracker_boxes_t[:, 3]
                     unmatched_size = np.maximum(unmatched_heights, unmatched_widths)
-                    min_size = np.min(self.seq_sizes[seq])/8
+                    min_size = np.min(self.seq_sizes[seq]) / 8
                     is_too_small = unmatched_size <= min_size + np.finfo('float').eps
 
                     # For unmatched tracker dets remove those that are greater than 50% within an ignore region.
                     if ignore_regions:
                         ignore_region_merged = ignore_regions[0]
                         for mask in ignore_regions[1:]:
-                            ignore_region_merged = mask_utils.merge([ignore_region_merged, mask], intersect=False)
-                        intersection_with_ignore_region = self. \
-                            _calculate_mask_ious(unmatched_tracker_dets, [ignore_region_merged], is_encoded=True, do_ioa=True)
-                        is_within_ignore_region = np.any(intersection_with_ignore_region > 0.5 + np.finfo('float').eps, axis=1)
-                        to_remove_tracker = unmatched_indices[np.logical_or(is_too_small, is_within_ignore_region)]
+                            ignore_region_merged = mask_utils.merge(
+                                [ignore_region_merged, mask], intersect=False
+                            )
+                        intersection_with_ignore_region = self._calculate_mask_ious(
+                            unmatched_tracker_dets,
+                            [ignore_region_merged],
+                            is_encoded=True,
+                            do_ioa=True,
+                        )
+                        is_within_ignore_region = np.any(
+                            intersection_with_ignore_region > 0.5 + np.finfo('float').eps, axis=1
+                        )
+                        to_remove_tracker = unmatched_indices[
+                            np.logical_or(is_too_small, is_within_ignore_region)
+                        ]
                     else:
                         to_remove_tracker = unmatched_indices[is_too_small]
 
                 # For the special 'all' class, you need to remove unmatched detections from all ignore classes and
                 #   non-evaluated classes.
                 if cls == 'all':
-                    unmatched_tracker_classes = [tracker_classes[i] for i in range(len(tracker_classes)) if
-                                              i in unmatched_indices]
-                    is_ignore_class = np.isin(unmatched_tracker_classes, self.seq_ignore_class_ids[seq])
-                    is_not_evaled_class = np.logical_not(np.isin(unmatched_tracker_classes, self.valid_class_ids))
-                    to_remove_all = unmatched_indices[np.logical_or(is_ignore_class, is_not_evaled_class)]
+                    unmatched_tracker_classes = [
+                        tracker_classes[i]
+                        for i in range(len(tracker_classes))
+                        if i in unmatched_indices
+                    ]
+                    is_ignore_class = np.isin(
+                        unmatched_tracker_classes, self.seq_ignore_class_ids[seq]
+                    )
+                    is_not_evaled_class = np.logical_not(
+                        np.isin(unmatched_tracker_classes, self.valid_class_ids)
+                    )
+                    to_remove_all = unmatched_indices[
+                        np.logical_or(is_ignore_class, is_not_evaled_class)
+                    ]
                     to_remove_tracker = np.concatenate([to_remove_tracker, to_remove_all], axis=0)
             else:
                 to_remove_tracker = np.array([], dtype=int)
@@ -448,7 +567,9 @@ class RobMOTS(_BaseDataset):
             # remove all unwanted tracker detections
             data['tracker_ids'][t] = np.delete(tracker_ids, to_remove_tracker, axis=0)
             data['tracker_dets'][t] = np.delete(tracker_dets, to_remove_tracker, axis=0)
-            data['tracker_confidences'][t] = np.delete(tracker_confidences, to_remove_tracker, axis=0)
+            data['tracker_confidences'][t] = np.delete(
+                tracker_confidences, to_remove_tracker, axis=0
+            )
             similarity_scores = np.delete(similarity_scores, to_remove_tracker, axis=1)
 
             # keep all ground truth detections
@@ -492,7 +613,6 @@ class RobMOTS(_BaseDataset):
         return data
 
     def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-
         # Only loaded when run to reduce minimum requirements
         from pycocotools import mask as mask_utils
 
@@ -502,7 +622,11 @@ class RobMOTS(_BaseDataset):
             tracker_boxes_t = mask_utils.toBbox(tracker_dets_t)
             tracker_boxes_t[:, 2] = tracker_boxes_t[:, 0] + tracker_boxes_t[:, 2]
             tracker_boxes_t[:, 3] = tracker_boxes_t[:, 1] + tracker_boxes_t[:, 3]
-            similarity_scores = self._calculate_box_ious(gt_dets_t, tracker_boxes_t, box_format='x0y0x1y1')
+            similarity_scores = self._calculate_box_ious(
+                gt_dets_t, tracker_boxes_t, box_format='x0y0x1y1'
+            )
         else:
-            similarity_scores = self._calculate_mask_ious(gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False)
+            similarity_scores = self._calculate_mask_ious(
+                gt_dets_t, tracker_dets_t, is_encoded=True, do_ioa=False
+            )
         return similarity_scores

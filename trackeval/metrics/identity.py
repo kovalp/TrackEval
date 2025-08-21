@@ -1,8 +1,9 @@
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
+
+from .. import _timing, utils
 from ._base_metric import _BaseMetric
-from .. import _timing
-from .. import utils
 
 
 class Identity(_BaseMetric):
@@ -95,15 +96,26 @@ class Identity(_BaseMetric):
         res = {}
         for field in self.integer_fields:
             if ignore_empty_classes:
-                res[field] = self._combine_sum({k: v for k, v in all_res.items()
-                                                if v['IDTP'] + v['IDFN'] + v['IDFP'] > 0 + np.finfo('float').eps},
-                                               field)
+                res[field] = self._combine_sum(
+                    {
+                        k: v
+                        for k, v in all_res.items()
+                        if v['IDTP'] + v['IDFN'] + v['IDFP'] > 0 + np.finfo('float').eps
+                    },
+                    field,
+                )
             else:
                 res[field] = self._combine_sum({k: v for k, v in all_res.items()}, field)
         for field in self.float_fields:
             if ignore_empty_classes:
-                res[field] = np.mean([v[field] for v in all_res.values()
-                                      if v['IDTP'] + v['IDFN'] + v['IDFP'] > 0 + np.finfo('float').eps], axis=0)
+                res[field] = np.mean(
+                    [
+                        v[field]
+                        for v in all_res.values()
+                        if v['IDTP'] + v['IDFN'] + v['IDFP'] > 0 + np.finfo('float').eps
+                    ],
+                    axis=0,
+                )
             else:
                 res[field] = np.mean([v[field] for v in all_res.values()], axis=0)
         return res
@@ -131,5 +143,7 @@ class Identity(_BaseMetric):
         """
         res['IDR'] = res['IDTP'] / np.maximum(1.0, res['IDTP'] + res['IDFN'])
         res['IDP'] = res['IDTP'] / np.maximum(1.0, res['IDTP'] + res['IDFP'])
-        res['IDF1'] = res['IDTP'] / np.maximum(1.0, res['IDTP'] + 0.5 * res['IDFP'] + 0.5 * res['IDFN'])
+        res['IDF1'] = res['IDTP'] / np.maximum(
+            1.0, res['IDTP'] + 0.5 * res['IDFP'] + 0.5 * res['IDFN']
+        )
         return res

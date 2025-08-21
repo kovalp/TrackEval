@@ -1,9 +1,11 @@
-
 import os
+
 import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from ._base_metric import _BaseMetric
+
 from .. import _timing
+from ._base_metric import _BaseMetric
 
 
 class HOTA(_BaseMetric):
@@ -16,7 +18,17 @@ class HOTA(_BaseMetric):
         self.plottable = True
         self.array_labels = np.arange(0.05, 0.99, 0.05)
         self.integer_array_fields = ['HOTA_TP', 'HOTA_FN', 'HOTA_FP']
-        self.float_array_fields = ['HOTA', 'DetA', 'AssA', 'DetRe', 'DetPr', 'AssRe', 'AssPr', 'LocA', 'OWTA']
+        self.float_array_fields = [
+            'HOTA',
+            'DetA',
+            'AssA',
+            'DetRe',
+            'DetPr',
+            'AssRe',
+            'AssPr',
+            'LocA',
+            'OWTA',
+        ]
         self.float_fields = ['HOTA(0)', 'LocA(0)', 'HOTALocA(0)']
         self.fields = self.float_array_fields + self.integer_array_fields + self.float_fields
         self.summary_fields = self.float_array_fields + self.float_fields
@@ -39,7 +51,9 @@ class HOTA(_BaseMetric):
             res['LocA(0)'] = 1.0
             return res
         if data['num_gt_dets'] == 0:
-            res['HOTA_FP'] = data['num_tracker_dets'] * np.ones((len(self.array_labels)), dtype=float)
+            res['HOTA_FP'] = data['num_tracker_dets'] * np.ones(
+                (len(self.array_labels)), dtype=float
+            )
             res['LocA'] = np.ones((len(self.array_labels)), dtype=float)
             res['LocA(0)'] = 1.0
             return res
@@ -54,18 +68,24 @@ class HOTA(_BaseMetric):
             # Count the potential matches between ids in each timestep
             # These are normalised, weighted by the match similarity.
             similarity = data['similarity_scores'][t]
-            sim_iou_denom = similarity.sum(0)[np.newaxis, :] + similarity.sum(1)[:, np.newaxis] - similarity
+            sim_iou_denom = (
+                similarity.sum(0)[np.newaxis, :] + similarity.sum(1)[:, np.newaxis] - similarity
+            )
             sim_iou = np.zeros_like(similarity)
             sim_iou_mask = sim_iou_denom > 0 + np.finfo('float').eps
             sim_iou[sim_iou_mask] = similarity[sim_iou_mask] / sim_iou_denom[sim_iou_mask]
-            potential_matches_count[gt_ids_t[:, np.newaxis], tracker_ids_t[np.newaxis, :]] += sim_iou
+            potential_matches_count[gt_ids_t[:, np.newaxis], tracker_ids_t[np.newaxis, :]] += (
+                sim_iou
+            )
 
             # Calculate the total number of dets for each gt_id and tracker_id.
             gt_id_count[gt_ids_t] += 1
             tracker_id_count[0, tracker_ids_t] += 1
 
         # Calculate overall jaccard alignment score (before unique matching) between IDs
-        global_alignment_score = potential_matches_count / (gt_id_count + tracker_id_count - potential_matches_count)
+        global_alignment_score = potential_matches_count / (
+            gt_id_count + tracker_id_count - potential_matches_count
+        )
         matches_counts = [np.zeros_like(potential_matches_count) for _ in self.array_labels]
 
         # Calculate scores for each timestep
@@ -82,14 +102,19 @@ class HOTA(_BaseMetric):
 
             # Get matching scores between pairs of dets for optimizing HOTA
             similarity = data['similarity_scores'][t]
-            score_mat = global_alignment_score[gt_ids_t[:, np.newaxis], tracker_ids_t[np.newaxis, :]] * similarity
+            score_mat = (
+                global_alignment_score[gt_ids_t[:, np.newaxis], tracker_ids_t[np.newaxis, :]]
+                * similarity
+            )
 
             # Hungarian algorithm to find best matches
             match_rows, match_cols = linear_sum_assignment(-score_mat)
 
             # Calculate and accumulate basic statistics
             for a, alpha in enumerate(self.array_labels):
-                actually_matched_mask = similarity[match_rows, match_cols] >= alpha - np.finfo('float').eps
+                actually_matched_mask = (
+                    similarity[match_rows, match_cols] >= alpha - np.finfo('float').eps
+                )
                 alpha_match_rows = match_rows[actually_matched_mask]
                 alpha_match_cols = match_cols[actually_matched_mask]
                 num_matches = len(alpha_match_rows)
@@ -98,7 +123,9 @@ class HOTA(_BaseMetric):
                 res['HOTA_FP'][a] += len(tracker_ids_t) - num_matches
                 if num_matches > 0:
                     res['LocA'][a] += sum(similarity[alpha_match_rows, alpha_match_cols])
-                    matches_counts[a][gt_ids_t[alpha_match_rows], tracker_ids_t[alpha_match_cols]] += 1
+                    matches_counts[a][
+                        gt_ids_t[alpha_match_rows], tracker_ids_t[alpha_match_cols]
+                    ] += 1
 
         # Calculate association scores (AssA, AssRe, AssPr) for the alpha value.
         # First calculate scores per gt_id/tracker_id combo and then average over the number of detections.
@@ -123,7 +150,9 @@ class HOTA(_BaseMetric):
             res[field] = self._combine_sum(all_res, field)
         for field in ['AssRe', 'AssPr', 'AssA']:
             res[field] = self._combine_weighted_av(all_res, field, res, weight_field='HOTA_TP')
-        loca_weighted_sum = sum([all_res[k]['LocA'] * all_res[k]['HOTA_TP'] for k in all_res.keys()])
+        loca_weighted_sum = sum(
+            [all_res[k]['LocA'] * all_res[k]['HOTA_TP'] for k in all_res.keys()]
+        )
         res['LocA'] = np.maximum(1e-10, loca_weighted_sum) / np.maximum(1e-10, res['HOTA_TP'])
         res = self._compute_final_fields(res)
         return res
@@ -136,16 +165,30 @@ class HOTA(_BaseMetric):
         for field in self.integer_array_fields:
             if ignore_empty_classes:
                 res[field] = self._combine_sum(
-                    {k: v for k, v in all_res.items()
-                     if (v['HOTA_TP'] + v['HOTA_FN'] + v['HOTA_FP'] > 0 + np.finfo('float').eps).any()}, field)
+                    {
+                        k: v
+                        for k, v in all_res.items()
+                        if (
+                            v['HOTA_TP'] + v['HOTA_FN'] + v['HOTA_FP'] > 0 + np.finfo('float').eps
+                        ).any()
+                    },
+                    field,
+                )
             else:
                 res[field] = self._combine_sum({k: v for k, v in all_res.items()}, field)
 
         for field in self.float_fields + self.float_array_fields:
             if ignore_empty_classes:
-                res[field] = np.mean([v[field] for v in all_res.values() if
-                                      (v['HOTA_TP'] + v['HOTA_FN'] + v['HOTA_FP'] > 0 + np.finfo('float').eps).any()],
-                                     axis=0)
+                res[field] = np.mean(
+                    [
+                        v[field]
+                        for v in all_res.values()
+                        if (
+                            v['HOTA_TP'] + v['HOTA_FN'] + v['HOTA_FP'] > 0 + np.finfo('float').eps
+                        ).any()
+                    ],
+                    axis=0,
+                )
             else:
                 res[field] = np.mean([v[field] for v in all_res.values()], axis=0)
         return res
@@ -157,7 +200,9 @@ class HOTA(_BaseMetric):
             res[field] = self._combine_sum(all_res, field)
         for field in ['AssRe', 'AssPr', 'AssA']:
             res[field] = self._combine_weighted_av(all_res, field, res, weight_field='HOTA_TP')
-        loca_weighted_sum = sum([all_res[k]['LocA'] * all_res[k]['HOTA_TP'] for k in all_res.keys()])
+        loca_weighted_sum = sum(
+            [all_res[k]['LocA'] * all_res[k]['HOTA_TP'] for k in all_res.keys()]
+        )
         res['LocA'] = np.maximum(1e-10, loca_weighted_sum) / np.maximum(1e-10, res['HOTA_TP'])
         res = self._compute_final_fields(res)
         return res
@@ -169,13 +214,15 @@ class HOTA(_BaseMetric):
         """
         res['DetRe'] = res['HOTA_TP'] / np.maximum(1, res['HOTA_TP'] + res['HOTA_FN'])
         res['DetPr'] = res['HOTA_TP'] / np.maximum(1, res['HOTA_TP'] + res['HOTA_FP'])
-        res['DetA'] = res['HOTA_TP'] / np.maximum(1, res['HOTA_TP'] + res['HOTA_FN'] + res['HOTA_FP'])
+        res['DetA'] = res['HOTA_TP'] / np.maximum(
+            1, res['HOTA_TP'] + res['HOTA_FN'] + res['HOTA_FP']
+        )
         res['HOTA'] = np.sqrt(res['DetA'] * res['AssA'])
         res['OWTA'] = np.sqrt(res['DetRe'] * res['AssA'])
 
         res['HOTA(0)'] = res['HOTA'][0]
         res['LocA(0)'] = res['LocA'][0]
-        res['HOTALocA(0)'] = res['HOTA(0)']*res['LocA(0)']
+        res['HOTALocA(0)'] = res['HOTA(0)'] * res['LocA(0)']
         return res
 
     def plot_single_tracker_results(self, table_res, tracker, cls, output_folder):

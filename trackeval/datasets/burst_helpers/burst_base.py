@@ -1,13 +1,16 @@
-import os
-import numpy as np
-import json
 import itertools
+import json
+import os
+
 from collections import defaultdict
+
+import numpy as np
+
 from scipy.optimize import linear_sum_assignment
-from trackeval.utils import TrackEvalException
+
+from trackeval import _timing, utils
 from trackeval.datasets._base_dataset import _BaseDataset
-from trackeval import utils
-from trackeval import _timing
+from trackeval.utils import TrackEvalException
 
 
 class BURSTBase(_BaseDataset):
@@ -26,7 +29,7 @@ class BURSTBase(_BaseDataset):
         return np.atleast_1d(det['bbox'])
 
     def _calculate_area_for_ann(self, ann):
-        return ann["bbox"][2] * ann["bbox"][3]
+        return ann['bbox'][2] * ann['bbox'][3]
 
     @staticmethod
     def get_default_dataset_config():
@@ -34,7 +37,9 @@ class BURSTBase(_BaseDataset):
         code_path = utils.get_code_path()
         default_config = {
             'GT_FOLDER': os.path.join(code_path, 'data/gt/tao/tao_training'),  # Location of GT data
-            'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/tao/tao_training'),  # Trackers location
+            'TRACKERS_FOLDER': os.path.join(
+                code_path, 'data/trackers/tao/tao_training'
+            ),  # Trackers location
             'OUTPUT_FOLDER': None,  # Where to save eval results (if None, same as TRACKERS_FOLDER)
             'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
             'CLASSES_TO_EVAL': None,  # Classes to eval (if None, all classes)
@@ -76,41 +81,109 @@ class BURSTBase(_BaseDataset):
 
         # Get sequences to eval and sequence information
         self.seq_list = [vid['name'].replace('/', '-') for vid in self.gt_data['videos']]
-        self.seq_name_to_seq_id = {vid['name'].replace('/', '-'): vid['id'] for vid in self.gt_data['videos']}
+        self.seq_name_to_seq_id = {
+            vid['name'].replace('/', '-'): vid['id'] for vid in self.gt_data['videos']
+        }
         # compute mappings from videos to annotation data
-        self.videos_to_gt_tracks, self.videos_to_gt_images = self._compute_vid_mappings(self.gt_data['annotations'])
+        self.videos_to_gt_tracks, self.videos_to_gt_images = self._compute_vid_mappings(
+            self.gt_data['annotations']
+        )
         # compute sequence lengths
         self.seq_lengths = {vid['id']: 0 for vid in self.gt_data['videos']}
         for img in self.gt_data['images']:
             self.seq_lengths[img['video_id']] += 1
         self.seq_to_images_to_timestep = self._compute_image_to_timestep_mappings()
-        self.seq_to_classes = {vid['id']: {'pos_cat_ids': list({track['category_id'] for track
-                                                                in self.videos_to_gt_tracks[vid['id']]}),
-                                           'neg_cat_ids': vid['neg_category_ids'],
-                                           'not_exhaustively_labeled_cat_ids': vid['not_exhaustive_category_ids']}
-                               for vid in self.gt_data['videos']}
+        self.seq_to_classes = {
+            vid['id']: {
+                'pos_cat_ids': list(
+                    {track['category_id'] for track in self.videos_to_gt_tracks[vid['id']]}
+                ),
+                'neg_cat_ids': vid['neg_category_ids'],
+                'not_exhaustively_labeled_cat_ids': vid['not_exhaustive_category_ids'],
+            }
+            for vid in self.gt_data['videos']
+        }
 
         # Get classes to eval
         considered_vid_ids = [self.seq_name_to_seq_id[vid] for vid in self.seq_list]
-        seen_cats = set([cat_id for vid_id in considered_vid_ids for cat_id
-                         in self.seq_to_classes[vid_id]['pos_cat_ids']])
+        seen_cats = set(
+            [
+                cat_id
+                for vid_id in considered_vid_ids
+                for cat_id in self.seq_to_classes[vid_id]['pos_cat_ids']
+            ]
+        )
         # only classes with ground truth are evaluated in TAO, also we don't evaluate distactors.
-        distractors = {20, 63, 108, 180, 188, 204, 212, 247, 303, 403, 407, 415, 490, 504, 507, 513, 529, 567,
-                       569, 588, 672, 691, 702, 708, 711, 720, 736, 737, 798, 813, 815, 827, 831, 851, 877, 883,
-                       912, 971, 976, 1130, 1133, 1134, 1169, 1184, 1220}
-        self.valid_classes = [cls['name'] for cls in self.gt_data['categories'] if (cls['id'] in seen_cats) and (cls['id'] not in distractors)]
+        distractors = {
+            20,
+            63,
+            108,
+            180,
+            188,
+            204,
+            212,
+            247,
+            303,
+            403,
+            407,
+            415,
+            490,
+            504,
+            507,
+            513,
+            529,
+            567,
+            569,
+            588,
+            672,
+            691,
+            702,
+            708,
+            711,
+            720,
+            736,
+            737,
+            798,
+            813,
+            815,
+            827,
+            831,
+            851,
+            877,
+            883,
+            912,
+            971,
+            976,
+            1130,
+            1133,
+            1134,
+            1169,
+            1184,
+            1220,
+        }
+        self.valid_classes = [
+            cls['name']
+            for cls in self.gt_data['categories']
+            if (cls['id'] in seen_cats) and (cls['id'] not in distractors)
+        ]
         cls_name_to_cls_id_map = {cls['name']: cls['id'] for cls in self.gt_data['categories']}
 
         if self.config['CLASSES_TO_EVAL']:
-            self.class_list = [cls.lower() if cls.lower() in self.valid_classes else None
-                               for cls in self.config['CLASSES_TO_EVAL']]
+            self.class_list = [
+                cls.lower() if cls.lower() in self.valid_classes else None
+                for cls in self.config['CLASSES_TO_EVAL']
+            ]
             if not all(self.class_list):
-                raise TrackEvalException('Attempted to evaluate an invalid class. Only classes ' +
-                                         ', '.join(self.valid_classes) +
-                                         ' are valid (classes present in ground truth data).')
+                raise TrackEvalException(
+                    'Attempted to evaluate an invalid class. Only classes '
+                    + ', '.join(self.valid_classes)
+                    + ' are valid (classes present in ground truth data).'
+                )
         else:
             self.class_list = [cls for cls in self.valid_classes]
-        self.class_name_to_class_id = {k: v for k, v in cls_name_to_cls_id_map.items() if k in self.class_list}
+        self.class_name_to_class_id = {
+            k: v for k, v in cls_name_to_cls_id_map.items() if k in self.class_list
+        }
 
         # Get trackers to eval
         if self.config['TRACKERS_TO_EVAL'] is None:
@@ -121,20 +194,34 @@ class BURSTBase(_BaseDataset):
         if self.config['TRACKER_DISPLAY_NAMES'] is None:
             self.tracker_to_disp = dict(zip(self.tracker_list, self.tracker_list))
         elif (self.config['TRACKERS_TO_EVAL'] is not None) and (
-                len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)):
-            self.tracker_to_disp = dict(zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES']))
+            len(self.config['TRACKER_DISPLAY_NAMES']) == len(self.tracker_list)
+        ):
+            self.tracker_to_disp = dict(
+                zip(self.tracker_list, self.config['TRACKER_DISPLAY_NAMES'])
+            )
         else:
-            raise TrackEvalException('List of tracker files and tracker display names do not match.')
+            raise TrackEvalException(
+                'List of tracker files and tracker display names do not match.'
+            )
 
         self.tracker_data = {tracker: dict() for tracker in self.tracker_list}
 
         for tracker in self.tracker_list:
-            tr_dir_files = [file for file in os.listdir(os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol))
-                            if file.endswith('.json')]
+            tr_dir_files = [
+                file
+                for file in os.listdir(
+                    os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol)
+                )
+                if file.endswith('.json')
+            ]
             if len(tr_dir_files) != 1:
-                raise TrackEvalException(os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol)
-                                         + ' does not contain exactly one json file.')
-            with open(os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, tr_dir_files[0])) as f:
+                raise TrackEvalException(
+                    os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol)
+                    + ' does not contain exactly one json file.'
+                )
+            with open(
+                os.path.join(self.tracker_fol, tracker, self.tracker_sub_fol, tr_dir_files[0])
+            ) as f:
                 curr_data = self._postproc_prediction_data(json.load(f))
 
             # limit detections if MAX_DETECTIONS > 0
@@ -151,7 +238,9 @@ class BURSTBase(_BaseDataset):
             self._merge_categories(curr_data)
 
             # get tracker sequence information
-            curr_videos_to_tracker_tracks, curr_videos_to_tracker_images = self._compute_vid_mappings(curr_data)
+            curr_videos_to_tracker_tracks, curr_videos_to_tracker_images = (
+                self._compute_vid_mappings(curr_data)
+            )
             self.tracker_data[tracker]['vids_to_tracks'] = curr_videos_to_tracker_tracks
             self.tracker_data[tracker]['vids_to_images'] = curr_videos_to_tracker_images
 
@@ -201,9 +290,13 @@ class BURSTBase(_BaseDataset):
             annotations = img['annotations']
             raw_data['dets'][t] = np.atleast_2d([ann['bbox'] for ann in annotations]).astype(float)
             raw_data['ids'][t] = np.atleast_1d([ann['track_id'] for ann in annotations]).astype(int)
-            raw_data['classes'][t] = np.atleast_1d([ann['category_id'] for ann in annotations]).astype(int)
+            raw_data['classes'][t] = np.atleast_1d(
+                [ann['category_id'] for ann in annotations]
+            ).astype(int)
             if not is_gt:
-                raw_data['tracker_confidences'][t] = np.atleast_1d([ann['score'] for ann in annotations]).astype(float)
+                raw_data['tracker_confidences'][t] = np.atleast_1d(
+                    [ann['score'] for ann in annotations]
+                ).astype(float)
 
         for t, d in enumerate(raw_data['dets']):
             if d is None:
@@ -214,13 +307,9 @@ class BURSTBase(_BaseDataset):
                     raw_data['tracker_confidences'][t] = np.empty(0)
 
         if is_gt:
-            key_map = {'ids': 'gt_ids',
-                       'classes': 'gt_classes',
-                       'dets': 'gt_dets'}
+            key_map = {'ids': 'gt_ids', 'classes': 'gt_classes', 'dets': 'gt_dets'}
         else:
-            key_map = {'ids': 'tracker_ids',
-                       'classes': 'tracker_classes',
-                       'dets': 'tracker_dets'}
+            key_map = {'ids': 'tracker_ids', 'classes': 'tracker_classes', 'dets': 'tracker_dets'}
         for k, v in key_map.items():
             raw_data[v] = raw_data.pop(k)
 
@@ -229,52 +318,74 @@ class BURSTBase(_BaseDataset):
             classes_to_consider = all_classes
             all_tracks = self.videos_to_gt_tracks[seq_id]
         else:
-            classes_to_consider = self.seq_to_classes[seq_id]['pos_cat_ids'] \
-                                  + self.seq_to_classes[seq_id]['neg_cat_ids']
+            classes_to_consider = (
+                self.seq_to_classes[seq_id]['pos_cat_ids']
+                + self.seq_to_classes[seq_id]['neg_cat_ids']
+            )
             all_tracks = self.tracker_data[tracker]['vids_to_tracks'][seq_id]
 
-        classes_to_tracks = {cls: [track for track in all_tracks if track['category_id'] == cls]
-                             if cls in classes_to_consider else [] for cls in all_classes}
+        classes_to_tracks = {
+            cls: [track for track in all_tracks if track['category_id'] == cls]
+            if cls in classes_to_consider
+            else []
+            for cls in all_classes
+        }
 
         # mapping from classes to track information
-        raw_data['classes_to_tracks'] = {cls: [{det['image_id']: self._box_or_mask_from_det(det)
-                                                for det in track['annotations']} for track in tracks]
-                                         for cls, tracks in classes_to_tracks.items()}
-        raw_data['classes_to_track_ids'] = {cls: [track['id'] for track in tracks]
-                                            for cls, tracks in classes_to_tracks.items()}
-        raw_data['classes_to_track_areas'] = {cls: [track['area'] for track in tracks]
-                                              for cls, tracks in classes_to_tracks.items()}
-        raw_data['classes_to_track_lengths'] = {cls: [len(track['annotations']) for track in tracks]
-                                                for cls, tracks in classes_to_tracks.items()}
+        raw_data['classes_to_tracks'] = {
+            cls: [
+                {det['image_id']: self._box_or_mask_from_det(det) for det in track['annotations']}
+                for track in tracks
+            ]
+            for cls, tracks in classes_to_tracks.items()
+        }
+        raw_data['classes_to_track_ids'] = {
+            cls: [track['id'] for track in tracks] for cls, tracks in classes_to_tracks.items()
+        }
+        raw_data['classes_to_track_areas'] = {
+            cls: [track['area'] for track in tracks] for cls, tracks in classes_to_tracks.items()
+        }
+        raw_data['classes_to_track_lengths'] = {
+            cls: [len(track['annotations']) for track in tracks]
+            for cls, tracks in classes_to_tracks.items()
+        }
 
         if not is_gt:
-            raw_data['classes_to_dt_track_scores'] = {cls: np.array([np.mean([float(x['score'])
-                                                                              for x in track['annotations']])
-                                                                     for track in tracks])
-                                                      for cls, tracks in classes_to_tracks.items()}
+            raw_data['classes_to_dt_track_scores'] = {
+                cls: np.array(
+                    [np.mean([float(x['score']) for x in track['annotations']]) for track in tracks]
+                )
+                for cls, tracks in classes_to_tracks.items()
+            }
 
         if is_gt:
-            key_map = {'classes_to_tracks': 'classes_to_gt_tracks',
-                       'classes_to_track_ids': 'classes_to_gt_track_ids',
-                       'classes_to_track_lengths': 'classes_to_gt_track_lengths',
-                       'classes_to_track_areas': 'classes_to_gt_track_areas'}
+            key_map = {
+                'classes_to_tracks': 'classes_to_gt_tracks',
+                'classes_to_track_ids': 'classes_to_gt_track_ids',
+                'classes_to_track_lengths': 'classes_to_gt_track_lengths',
+                'classes_to_track_areas': 'classes_to_gt_track_areas',
+            }
         else:
-            key_map = {'classes_to_tracks': 'classes_to_dt_tracks',
-                       'classes_to_track_ids': 'classes_to_dt_track_ids',
-                       'classes_to_track_lengths': 'classes_to_dt_track_lengths',
-                       'classes_to_track_areas': 'classes_to_dt_track_areas'}
+            key_map = {
+                'classes_to_tracks': 'classes_to_dt_tracks',
+                'classes_to_track_ids': 'classes_to_dt_track_ids',
+                'classes_to_track_lengths': 'classes_to_dt_track_lengths',
+                'classes_to_track_areas': 'classes_to_dt_track_areas',
+            }
         for k, v in key_map.items():
             raw_data[v] = raw_data.pop(k)
 
         raw_data['num_timesteps'] = num_timesteps
         raw_data['neg_cat_ids'] = self.seq_to_classes[seq_id]['neg_cat_ids']
-        raw_data['not_exhaustively_labeled_cls'] = self.seq_to_classes[seq_id]['not_exhaustively_labeled_cat_ids']
+        raw_data['not_exhaustively_labeled_cls'] = self.seq_to_classes[seq_id][
+            'not_exhaustively_labeled_cat_ids'
+        ]
         raw_data['seq'] = seq
         return raw_data
 
     @_timing.time
     def get_preprocessed_seq_data(self, raw_data, cls):
-        """ Preprocess data for a single sequence for a single class ready for evaluation.
+        """Preprocess data for a single sequence for a single class ready for evaluation.
         Inputs:
              - raw_data is a dict containing the data for the sequence already read in by get_raw_seq_data().
              - cls is the class to be evaluated.
@@ -311,7 +422,14 @@ class BURSTBase(_BaseDataset):
         is_not_exhaustively_labeled = cls_id in raw_data['not_exhaustively_labeled_cls']
         is_neg_category = cls_id in raw_data['neg_cat_ids']
 
-        data_keys = ['gt_ids', 'tracker_ids', 'gt_dets', 'tracker_dets', 'tracker_confidences', 'similarity_scores']
+        data_keys = [
+            'gt_ids',
+            'tracker_ids',
+            'gt_dets',
+            'tracker_dets',
+            'tracker_confidences',
+            'similarity_scores',
+        ]
         data = {key: [None] * raw_data['num_timesteps'] for key in data_keys}
         unique_gt_ids = []
         unique_tracker_ids = []
@@ -319,7 +437,6 @@ class BURSTBase(_BaseDataset):
         num_tracker_dets = 0
 
         for t in range(raw_data['num_timesteps']):
-
             # Only extract relevant dets for this class for preproc and eval (cls)
             gt_class_mask = np.atleast_1d(raw_data['gt_classes'][t] == cls_id)
             gt_class_mask = gt_class_mask.astype(bool)
@@ -331,7 +448,9 @@ class BURSTBase(_BaseDataset):
             tracker_ids = raw_data['tracker_ids'][t][tracker_class_mask]
             tracker_dets = raw_data['tracker_dets'][t][tracker_class_mask]
             tracker_confidences = raw_data['tracker_confidences'][t][tracker_class_mask]
-            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][:, tracker_class_mask]
+            similarity_scores = raw_data['similarity_scores'][t][gt_class_mask, :][
+                :, tracker_class_mask
+            ]
 
             if not self.config['EXEMPLAR_GUIDED']:
                 # Match tracker and gt dets (with hungarian algorithm).
@@ -340,7 +459,9 @@ class BURSTBase(_BaseDataset):
                     matching_scores = similarity_scores.copy()
                     matching_scores[matching_scores < 0.5 - np.finfo('float').eps] = 0
                     match_rows, match_cols = linear_sum_assignment(-matching_scores)
-                    actually_matched_mask = matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                    actually_matched_mask = (
+                        matching_scores[match_rows, match_cols] > 0 + np.finfo('float').eps
+                    )
                     match_cols = match_cols[actually_matched_mask]
                     unmatched_indices = np.delete(unmatched_indices, match_cols, axis=0)
 
@@ -354,7 +475,9 @@ class BURSTBase(_BaseDataset):
                 # remove all unwanted unmatched tracker detections
                 data['tracker_ids'][t] = np.delete(tracker_ids, to_remove_tracker, axis=0)
                 data['tracker_dets'][t] = np.delete(tracker_dets, to_remove_tracker, axis=0)
-                data['tracker_confidences'][t] = np.delete(tracker_confidences, to_remove_tracker, axis=0)
+                data['tracker_confidences'][t] = np.delete(
+                    tracker_confidences, to_remove_tracker, axis=0
+                )
                 similarity_scores = np.delete(similarity_scores, to_remove_tracker, axis=1)
             else:
                 data['tracker_ids'][t] = tracker_ids
@@ -409,7 +532,7 @@ class BURSTBase(_BaseDataset):
 
         # sort tracker data tracks by tracker confidence scores
         if data['dt_tracks']:
-            idx = np.argsort([-score for score in data['dt_track_scores']], kind="mergesort")
+            idx = np.argsort([-score for score in data['dt_track_scores']], kind='mergesort')
             data['dt_track_scores'] = [data['dt_track_scores'][i] for i in idx]
             data['dt_tracks'] = [data['dt_tracks'][i] for i in idx]
             data['dt_track_ids'] = [data['dt_track_ids'][i] for i in idx]
@@ -455,49 +578,55 @@ class BURSTBase(_BaseDataset):
             images[image['id']] = image
 
         for ann in annotations:
-            ann["area"] = self._calculate_area_for_ann(ann)
+            ann['area'] = self._calculate_area_for_ann(ann)
 
-            vid = ann["video_id"]
-            if ann["video_id"] not in vids_to_tracks.keys():
-                vids_to_tracks[ann["video_id"]] = list()
-            if ann["video_id"] not in vids_to_imgs.keys():
-                vids_to_imgs[ann["video_id"]] = list()
+            vid = ann['video_id']
+            if ann['video_id'] not in vids_to_tracks.keys():
+                vids_to_tracks[ann['video_id']] = list()
+            if ann['video_id'] not in vids_to_imgs.keys():
+                vids_to_imgs[ann['video_id']] = list()
 
             # Fill in vids_to_tracks
-            tid = ann["track_id"]
-            exist_tids = [track["id"] for track in vids_to_tracks[vid]]
+            tid = ann['track_id']
+            exist_tids = [track['id'] for track in vids_to_tracks[vid]]
             try:
                 index1 = exist_tids.index(tid)
             except ValueError:
                 index1 = -1
             if tid not in exist_tids:
-                curr_track = {"id": tid, "category_id": ann["category_id"],
-                              "video_id": vid, "annotations": [ann]}
+                curr_track = {
+                    'id': tid,
+                    'category_id': ann['category_id'],
+                    'video_id': vid,
+                    'annotations': [ann],
+                }
                 vids_to_tracks[vid].append(curr_track)
             else:
-                vids_to_tracks[vid][index1]["annotations"].append(ann)
+                vids_to_tracks[vid][index1]['annotations'].append(ann)
 
             # Fill in vids_to_imgs
             img_id = ann['image_id']
-            exist_img_ids = [img["id"] for img in vids_to_imgs[vid]]
+            exist_img_ids = [img['id'] for img in vids_to_imgs[vid]]
             try:
                 index2 = exist_img_ids.index(img_id)
             except ValueError:
                 index2 = -1
             if index2 == -1:
-                curr_img = {"id": img_id, "annotations": [ann]}
+                curr_img = {'id': img_id, 'annotations': [ann]}
                 vids_to_imgs[vid].append(curr_img)
             else:
-                vids_to_imgs[vid][index2]["annotations"].append(ann)
+                vids_to_imgs[vid][index2]['annotations'].append(ann)
 
         # sort annotations by frame index and compute track area
         for vid, tracks in vids_to_tracks.items():
             for track in tracks:
-                track["annotations"] = sorted(
-                    track['annotations'],
-                    key=lambda x: images[x['image_id']]['frame_index'])
+                track['annotations'] = sorted(
+                    track['annotations'], key=lambda x: images[x['image_id']]['frame_index']
+                )
                 # Computer average area
-                track["area"] = (sum(x['area'] for x in track['annotations']) / len(track['annotations']))
+                track['area'] = sum(x['area'] for x in track['annotations']) / len(
+                    track['annotations']
+                )
 
         # Ensure all videos are present
         for vid_id in vid_ids:
@@ -535,12 +664,12 @@ class BURSTBase(_BaseDataset):
         max_dets = self.config['MAX_DETECTIONS']
         img_ann = defaultdict(list)
         for ann in annotations:
-            img_ann[ann["image_id"]].append(ann)
+            img_ann[ann['image_id']].append(ann)
 
         for img_id, _anns in img_ann.items():
             if len(_anns) <= max_dets:
                 continue
-            _anns = sorted(_anns, key=lambda x: x["score"], reverse=True)
+            _anns = sorted(_anns, key=lambda x: x['score'], reverse=True)
             img_ann[img_id] = _anns[:max_dets]
 
         return [ann for anns in img_ann.values() for ann in anns]
@@ -553,9 +682,7 @@ class BURSTBase(_BaseDataset):
         """
         missing_video_id = [x for x in annotations if 'video_id' not in x]
         if missing_video_id:
-            image_id_to_video_id = {
-                x['id']: x['video_id'] for x in self.gt_data['images']
-            }
+            image_id_to_video_id = {x['id']: x['video_id'] for x in self.gt_data['images']}
             for x in missing_video_id:
                 x['video_id'] = image_id_to_video_id[x['image_id']]
 
@@ -580,7 +707,7 @@ class BURSTBase(_BaseDataset):
             max_track_id = max(max_track_id, t)
 
         if track_ids_to_update:
-            #print('true')
+            # print('true')
             next_id = itertools.count(max_track_id + 1)
             new_track_ids = defaultdict(lambda: next(next_id))
             for ann in annotations:
