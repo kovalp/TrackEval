@@ -3,10 +3,10 @@ name = "trackeval"
 version = "0.1.5"
 description = "Different tracking evaluation metrics including HOTA metrics."
 readme = "README.md"
-requires-python = ">=3.8,<3.10"
+requires-python = ">=3.8,<3.11"
 dependencies = [
     "matplotlib>=3.6.3",
-    "numpy==1.19.5",
+    "numpy>=1.19.5",
     "opencv-python>=4.5.4.60",
     "pillow>=10.4.0",
     "pycocotools>=2.0.7",
