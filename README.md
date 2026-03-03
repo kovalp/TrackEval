@@ -1,18 +1,17 @@
-
 # TrackEval
+
 *Code for evaluating object tracking.*
 
 This codebase provides code for a number of different tracking evaluation metrics (including the [HOTA metrics](https://link.springer.com/article/10.1007/s11263-020-01375-2)), as well as supporting running all of these metrics on a number of different tracking benchmarks. Plus plotting of results and other things one may want to do for tracking evaluation.
 
-## **NEW**: Using the uv package manager
+## Using the uv package manager
 
 We recommend using the `uv` package manager for installing the dependencies.
 The installation procedure would go similar to the plan below
 
  - Install a version of Python interpreter `Python>=3.8` 
     - any minor version should do;
-    - `3.13` should be faster and less buggy, but it is difficult to guarantee without unit tests;
-    - `>3.13` causes compilation of some dependencies and fails, but may work in the future.
+    - `3.14` should be faster and less buggy, but it is difficult to guarantee without unit tests;
  - Install the `uv` package manager. Note that `uv` is available only for `Python>=3.8`. 
  - Run `uv sync` to install the dependencies and the package (in editable mode).
 
