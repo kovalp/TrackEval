@@ -41,7 +41,7 @@ maintainers = [
 
 [project.urls]
 Repository = "https://github.com/kovalp/TrackEval"
-ChangeLog = "https://github.com/kovalp/TrackEval/CHANGELOG.md"
+ChangeLog = "https://github.com/kovalp/TrackEval/blob/master/CHANGELOG.md"
 
 
 [dependency-groups]
