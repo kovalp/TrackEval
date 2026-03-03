@@ -45,7 +45,7 @@ class Kitti2DBox(_BaseDataset):
         self.data_is_zipped = self.config['INPUT_AS_ZIP']
 
         self.output_fol = self.config['OUTPUT_FOLDER']
-        if self.output_fol is None:
+        if self.output_fol == '':
             self.output_fol = self.tracker_fol
 
         self.tracker_sub_fol = self.config['TRACKER_SUB_FOLDER']
