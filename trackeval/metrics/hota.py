@@ -1,4 +1,5 @@
 
+from typing import Any, Dict, List, Union
 import os
 
 import numpy as np
@@ -25,7 +26,7 @@ class HOTA(_BaseMetric):
         self.summary_fields = self.float_array_fields + self.float_fields
 
     @_timing.time
-    def eval_sequence(self, data):
+    def eval_sequence(self, data: Dict[str, Union[str, int, List[np.ndarray]]]) -> Dict[str, float]:
         """Calculates the HOTA metrics for one sequence"""
 
         # Initialise results

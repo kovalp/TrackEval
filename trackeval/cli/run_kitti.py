@@ -61,6 +61,8 @@ def run(args: Union[Sequence[str], None] = None) -> None:
             metrics_list.append(metric())
     if len(metrics_list) == 0:
         raise Exception('No metrics selected for evaluation')
+    print(dataset_list)
+    print(metrics_list)
     evaluator.evaluate(dataset_list, metrics_list)
 
 
