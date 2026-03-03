@@ -1,6 +1,6 @@
 [project]
 name = "trackeval"
-version = "1.2.0"
+version = "1.3.0"
 description = "Tracking evaluation metrics including ClearMOT and HOTA."
 readme = "README.md"
 requires-python = ">=3.8,<4.0"
@@ -41,7 +41,7 @@ maintainers = [
 
 [project.urls]
 Repository = "https://github.com/kovalp/TrackEval"
-ChangeLog = "https://github.com/kovalp/TrackEval/CHANGELOG.md"
+ChangeLog = "https://github.com/kovalp/TrackEval/blob/master/CHANGELOG.md"
 
 
 [dependency-groups]
