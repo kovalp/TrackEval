@@ -6,8 +6,10 @@ import numpy as np
 
 from scipy.optimize import linear_sum_assignment
 
-from .. import _timing
-from ._base_metric import _BaseMetric
+from trackeval import _timing
+from trackeval.types import DT
+from trackeval.metrics._base_metric import _BaseMetric
+from .global_info import get_global_info
 
 
 class HOTA(_BaseMetric):
@@ -26,10 +28,10 @@ class HOTA(_BaseMetric):
         self.summary_fields = self.float_array_fields + self.float_fields
 
     @_timing.time
-    def eval_sequence(self, data: Dict[str, Union[str, int, List[np.ndarray]]]) -> Dict[str, float]:
+    def eval_sequence(self, data: DT) -> Dict[str, float]:
         """Calculates the HOTA metrics for one sequence"""
 
-        # Initialise results
+        # Initialize results
         res = {}
         for field in self.float_array_fields + self.integer_array_fields:
             res[field] = np.zeros((len(self.array_labels)), dtype=float)
@@ -49,24 +51,7 @@ class HOTA(_BaseMetric):
             return res
 
         # Variables counting global association
-        potential_matches_count = np.zeros((data['num_gt_ids'], data['num_tracker_ids']))
-        gt_id_count = np.zeros((data['num_gt_ids'], 1))
-        tracker_id_count = np.zeros((1, data['num_tracker_ids']))
-
-        # First loop through each timestep and accumulate global track information.
-        for t, (gt_ids_t, tracker_ids_t) in enumerate(zip(data['gt_ids'], data['tracker_ids'])):
-            # Count the potential matches between ids in each timestep
-            # These are normalised, weighted by the match similarity.
-            similarity = data['similarity_scores'][t]
-            sim_iou_denom = similarity.sum(0)[np.newaxis, :] + similarity.sum(1)[:, np.newaxis] - similarity
-            sim_iou = np.zeros_like(similarity)
-            sim_iou_mask = sim_iou_denom > 0 + np.finfo('float').eps
-            sim_iou[sim_iou_mask] = similarity[sim_iou_mask] / sim_iou_denom[sim_iou_mask]
-            potential_matches_count[gt_ids_t[:, np.newaxis], tracker_ids_t[np.newaxis, :]] += sim_iou
-
-            # Calculate the total number of dets for each gt_id and tracker_id.
-            gt_id_count[gt_ids_t] += 1
-            tracker_id_count[0, tracker_ids_t] += 1
+        potential_matches_count, gt_id_count, tracker_id_count = get_global_info(data)
 
         # Calculate overall jaccard alignment score (before unique matching) between IDs
         global_alignment_score = potential_matches_count / (gt_id_count + tracker_id_count - potential_matches_count)

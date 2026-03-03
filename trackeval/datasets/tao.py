@@ -9,7 +9,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from .. import _timing, utils
-from ..utils import TrackEvalException
+from ..exception import TrackEvalException
 from ._base_dataset import _BaseDataset
 
 

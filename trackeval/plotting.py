@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from .utils import TrackEvalException
+from .exception import TrackEvalException
 
 
 def plot_compare_trackers(tracker_folder, tracker_list, cls, output_folder, plots_list=None):

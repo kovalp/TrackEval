@@ -6,8 +6,10 @@ import numpy as np
 
 from scipy.optimize import linear_sum_assignment
 
-from .. import _timing, utils
-from ..utils import TrackEvalException
+from trackeval import _timing
+from trackeval.exception import TrackEvalException
+import trackeval.utils
+from trackeval.types import FMT
 from ._base_dataset import _BaseDataset
 
 
@@ -17,7 +19,7 @@ class Kitti2DBox(_BaseDataset):
     @staticmethod
     def get_default_dataset_config():
         """Default class config values"""
-        code_path = utils.get_code_path()
+        code_path = trackeval.utils.get_code_path()
         default_config = {
             'GT_FOLDER': os.path.join(code_path, 'data/gt/kitti/kitti_2d_box_train'),  # Location of GT data
             'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/kitti/kitti_2d_box_train/'),  # Trackers location
@@ -34,10 +36,10 @@ class Kitti2DBox(_BaseDataset):
         return default_config
 
     def __init__(self, config=None):
-        """Initialise dataset, checking that all required files are present"""
+        """Initialize dataset, checking that all required files are present"""
         super().__init__()
         # Fill non-given config values with defaults
-        self.config = utils.init_config(config, self.get_default_dataset_config(), self.get_name())
+        self.config = trackeval.utils.init_config(config, self.get_default_dataset_config(), self.get_name())
         self.gt_fol = self.config['GT_FOLDER']
         self.tracker_fol = self.config['TRACKERS_FOLDER']
         self.should_classes_combine = False
@@ -386,6 +388,5 @@ class Kitti2DBox(_BaseDataset):
 
         return data
 
-    def _calculate_similarities(self, gt_dets_t, tracker_dets_t):
-        similarity_scores = self._calculate_box_ious(gt_dets_t, tracker_dets_t, box_format='x0y0x1y1')
-        return similarity_scores
+    def _calculate_similarities(self, gt_az: FMT, trk_tz: FMT) -> FMT:
+        return self._calculate_box_ious(gt_az, trk_tz, box_format='x0y0x1y1')

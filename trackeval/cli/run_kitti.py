@@ -1,7 +1,7 @@
 """ run_kitti.py
 
 Run example:
-run_kitti.py --USE_PARALLEL False --METRICS Hota --TRACKERS_TO_EVAL CIWT
+run_kitti.py --USE_PARALLEL False --TRACKERS_TO_EVAL CIWT
 
 Command Line Arguments: Defaults, # Comments
     Eval arguments:
@@ -26,8 +26,6 @@ Command Line Arguments: Defaults, # Comments
         'PRINT_CONFIG': True,  # Whether to print current config
         'TRACKER_SUB_FOLDER': 'data',  # Tracker files are in TRACKER_FOLDER/tracker_name/TRACKER_SUB_FOLDER
         'OUTPUT_SUB_FOLDER': ''  # Output files are saved in OUTPUT_FOLDER/tracker_name/OUTPUT_SUB_FOLDER
-    Metric arguments:
-        'METRICS': ['Hota','Clear', 'ID', 'Count']
 """
 
 from multiprocessing import freeze_support
@@ -36,31 +34,23 @@ from typing import Sequence, Union
 import trackeval
 
 from trackeval.cli.modify_with_cmd_line import modify_with_cmd_line
+from trackeval.metrics import HOTA, CLEAR, Identity
 
 
 def run(args: Union[Sequence[str], None] = None) -> None:
-    """."""
     freeze_support()
 
-    # Command line interface:
     default_eval_config = trackeval.Evaluator.get_default_eval_config()
     default_eval_config['DISPLAY_LESS_PROGRESS'] = False
     default_dataset_config = trackeval.datasets.Kitti2DBox.get_default_dataset_config()
-    default_metrics_config = {'METRICS': ['HOTA', 'CLEAR', 'Identity']}
-    config = {**default_eval_config, **default_dataset_config, **default_metrics_config}
+    config = {**default_eval_config, **default_dataset_config}
     modify_with_cmd_line(config, args)
     eval_config = {k: v for k, v in config.items() if k in default_eval_config.keys()}
     dataset_config = {k: v for k, v in config.items() if k in default_dataset_config.keys()}
-    metrics_config = {k: v for k, v in config.items() if k in default_metrics_config.keys()}
 
     evaluator = trackeval.Evaluator(eval_config)
     dataset_list = [trackeval.datasets.Kitti2DBox(dataset_config)]
-    metrics_list = []
-    for metric in [trackeval.metrics.HOTA, trackeval.metrics.CLEAR, trackeval.metrics.Identity]:
-        if metric.get_name() in metrics_config['METRICS']:
-            metrics_list.append(metric())
-    if len(metrics_list) == 0:
-        raise Exception('No metrics selected for evaluation')
+    metrics_list = [HOTA(), CLEAR(), Identity()]
     evaluator.evaluate(dataset_list, metrics_list)
 
 
