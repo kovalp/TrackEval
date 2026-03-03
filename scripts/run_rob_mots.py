@@ -12,8 +12,7 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import trackeval  # noqa: E402
 
-from trackeval import utils
-
+from trackeval import utils, exception
 
 code_path = utils.get_code_path()
 
@@ -79,7 +78,7 @@ if __name__ == '__main__':
         output = list(list(output_msg.values())[0].values())[0]
 
     except Exception as err:
-        if type(err) == trackeval.utils.TrackEvalException:
+        if type(err) == exception.TrackEvalException:
             output = str(err)
         else:
             output = 'Unknown error occurred.'

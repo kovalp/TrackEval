@@ -10,7 +10,7 @@ from scipy.optimize import linear_sum_assignment
 
 from trackeval import _timing, utils
 from trackeval.datasets._base_dataset import _BaseDataset
-from trackeval.utils import TrackEvalException
+from trackeval.exception import TrackEvalException
 
 
 class BURST_OW_Base(_BaseDataset):

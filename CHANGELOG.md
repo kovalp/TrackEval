@@ -1,3 +1,9 @@
+# 1.4.0
+
+ - Remove --METRICS argument from the KITTI CLI
+ - Start adding typehints in the submodule `trackeval.eval`.
+ - Add `tqdm` as dependency.
+
 # 1.3.0
 
  - Python 3.14 support

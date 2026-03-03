@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 
 from .. import _timing, utils
-from ..utils import TrackEvalException
+from ..exception import TrackEvalException
 from ._base_metric import _BaseMetric
 
 

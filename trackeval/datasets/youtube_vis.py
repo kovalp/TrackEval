@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 from .. import _timing, utils
-from ..utils import TrackEvalException
+from ..exception import TrackEvalException
 from ._base_dataset import _BaseDataset
 
 

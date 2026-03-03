@@ -1,3 +1,5 @@
+from typing import Union
+
 from .bdd100k import BDD100K
 from .davis import DAVIS
 from .kitti_2d_box import Kitti2DBox
@@ -17,3 +19,5 @@ from .head_tracking_challenge import HeadTrackingChallenge
 from .person_path_22 import PersonPath22
 from .rob_mots import RobMOTS
 from .youtube_vis import YouTubeVIS
+
+DST = Union[Kitti2DBox, KittiMOTS, MotChallenge2DBox, YouTubeVIS]

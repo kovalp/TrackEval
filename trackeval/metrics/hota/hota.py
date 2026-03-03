@@ -31,7 +31,7 @@ class HOTA(_BaseMetric):
     def eval_sequence(self, data: DT) -> Dict[str, float]:
         """Calculates the HOTA metrics for one sequence"""
 
-        # Initialise results
+        # Initialize results
         res = {}
         for field in self.float_array_fields + self.integer_array_fields:
             res[field] = np.zeros((len(self.array_labels)), dtype=float)

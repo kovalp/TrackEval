@@ -8,7 +8,7 @@ from scipy.optimize import linear_sum_assignment
 
 from .. import _timing, utils
 from ..datasets.rob_mots_classmap import cls_id_to_name
-from ..utils import TrackEvalException
+from ..exception import TrackEvalException
 from ._base_dataset import _BaseDataset
 
 
