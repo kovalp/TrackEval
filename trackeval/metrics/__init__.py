@@ -1,6 +1,6 @@
 from .clear import CLEAR
 from .count import Count
-from .hota import HOTA
+from trackeval.metrics.hota.hota import HOTA
 from .identity import Identity
 from .ideucl import IDEucl
 from .j_and_f import JAndF
