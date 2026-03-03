@@ -60,6 +60,6 @@ trackeval-kitti = "trackeval.cli.run_kitti:main"
 [tool.uv]
 package = true
 
-[tool.setuptools.packages.find]
-include = ["trackeval*"]
-exclude = ["data*"]
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"

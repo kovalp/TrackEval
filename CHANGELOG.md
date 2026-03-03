@@ -2,3 +2,5 @@
 
  - Python 3.14 support
  - Update dependencies
+ - Change to hatchling build system
+
