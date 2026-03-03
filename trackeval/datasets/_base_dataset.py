@@ -53,10 +53,10 @@ class _BaseDataset(ABC):
     def get_name(self):
         return self.get_class_name()
 
-    def get_output_fol(self, tracker):
-        return os.path.join(self.output_fol, tracker, self.output_sub_fol)
+    def get_output_fol(self, tracker: str) -> str:
+        return str(os.path.join(self.output_fol, tracker, self.output_sub_fol))
 
-    def get_display_name(self, tracker):
+    def get_display_name(self, tracker: str) -> str:
         """ Can be overwritten if the trackers name (in files) is different to how it should be displayed.
         By default this method just returns the trackers name as is.
         """
